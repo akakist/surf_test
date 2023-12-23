@@ -138,7 +138,6 @@ void surface::calculateReperz()
 
     }
     avg/=double(pts.size());
-    reperz.push_back(avg);
 
     point d=max-min;
 
