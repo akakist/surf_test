@@ -28,12 +28,12 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         auto ns1=neighboursForPt[p1].size();
         if(ns0>=3)
         {
-            removePointFromDistPtsToRepers_work(p0);
+            removePointFromDistPtsToRepers(p0);
             ptsToSearch.erase(p0);
         }
         if(ns1>=3)
         {
-            removePointFromDistPtsToRepers_work(p1);
+            removePointFromDistPtsToRepers(p1);
             ptsToSearch.erase(p1);
         }
         if(ns0==2)
@@ -85,7 +85,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     std::cout << "Print out" << std::endl;
     std::ofstream fout(fn_out);
     fout<<"*Nodes"<<std::endl;
-    for(size_t i=0;i<pts.size();i++)
+    for(size_t i=0; i<pts.size(); i++)
     {
         fout<< ptIdx2TaskId[i] <<", " << pts[i].x <<", " << pts[i].y << ", " << pts[i].z << std::endl;
     }
@@ -106,7 +106,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
 }
 
-void surface::removePointFromDistPtsToRepers_work(int pt)
+void surface::removePointFromDistPtsToRepers(int pt)
 {
     for(size_t i=0; i<reperz.size(); i++)
     {
@@ -153,10 +153,6 @@ void surface::calculateReperz()
 
         }
     }
-
-
-
-
 
     distPtsToRepers.resize(reperz.size());
     distInRepersByPt.resize(reperz.size());

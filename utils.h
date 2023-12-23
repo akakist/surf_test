@@ -13,7 +13,6 @@ public:
     st_malloc(size_t size)
     {
         buf = (unsigned char*)malloc(size + 1);
-        //if (buf == NULL)throw std::runtime_error("malloc error");
     }
     ~st_malloc()
     {
