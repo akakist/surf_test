@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
         if((std::string)argv[i]=="-o" ||(std::string)argv[i]=="--output")
             outfile=argv[i+1];
     }
+    if(infile.size()==0 || outfile.size()==0)
+        throw std::runtime_error("infile or outfile not specified");
     surface s;
     s.run(infile,outfile);
 
