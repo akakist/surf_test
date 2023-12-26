@@ -40,10 +40,10 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         {
             auto d=fdist(pts[pt.second], pts[z]);
 
-            if(AVG_COUNT>5 && sqrt(AVG_R2/(double)AVG_COUNT) * 5. < d)
+            if(AVG_COUNT>5 && sqrt(AVG_R2/(double)AVG_COUNT) * 100. < d)
             {
                 /// If the distance between points is too greater than the average between points, then we do not insert these points.
-                continue;
+//                continue;
             }
             AVG_R2=qw(d);
 
@@ -55,6 +55,16 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 AVG_COUNT++;
             }
         }
+    }
+
+    std::map<int,int> cnt;
+    for(auto & z: drawedNeighbours4Pt)
+    {
+        cnt[z.size()]++;
+    }
+    for(auto &z: cnt)
+    {
+        std::cout << "by count " << z.first  << " " << z.second << std::endl;
     }
 
 #ifdef KALL
@@ -97,7 +107,8 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     std::set<std::set<int> > triangles;
     for(size_t i=0; i<drawedNeighbours4Pt.size(); i++)
     {
-        switch(drawedNeighbours4Pt[i].size())
+        auto sz=drawedNeighbours4Pt[i].size();
+        switch(sz)
         {
         case 2:
         {
@@ -108,7 +119,11 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         }
         break;
         case 1:
+            continue;
             throw std::runtime_error("case 1:");
+        case 0:
+            continue;
+            throw std::runtime_error("case 0:");
         case 3:
         {
             std::vector<int> t;
@@ -123,7 +138,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         }
         break;
         default:
-            throw std::runtime_error("default:");
+            throw std::runtime_error("default:"+ std::to_string(sz));
         }
 
 
@@ -134,7 +149,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     fout<<"*Nodes"<<std::endl;
     for(size_t i=0; i<pts.size(); i++)
     {
-        fout<< ptIdx2TaskId[i] <<", " << pts[i].x <<", " << pts[i].y << ", " << pts[i].z << std::endl;
+        fout<< i+1 <<", " << pts[i].x <<", " << pts[i].y << ", " << pts[i].z << std::endl;
     }
     fout<<"*Elements"<<std::endl;
     int idx=1;
@@ -143,7 +158,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         fout<< idx ;
         for(auto&z: t)
         {
-            fout<< ", " << ptIdx2TaskId[z];
+            fout<< ", " << z+1;
         }
         fout << std::endl;
         idx++;
