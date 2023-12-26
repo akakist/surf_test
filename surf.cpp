@@ -67,39 +67,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         std::cout << "by count " << z.first  << " " << z.second << std::endl;
     }
 
-#ifdef KALL
-    while(ptsToSearch.size())
-    {
-
-        int p0=*ptsToSearch.begin();
-        int p1=find3NearestByReperz(p0,neighboursForPt[p0]);
-        if(p1==p0)
-            throw std::runtime_error("if(p1==p0)");
-        neighboursForPt[p0].insert(p1);
-        neighboursForPt[p1].insert(p0);
-        auto ns0=neighboursForPt[p0].size();
-        auto ns1=neighboursForPt[p1].size();
-        if(ns0>=3)
-        {
-            removePointFromDistPtsToRepers(p0);
-            ptsToSearch.erase(p0);
-        }
-        if(ns1>=3)
-        {
-            removePointFromDistPtsToRepers(p1);
-            ptsToSearch.erase(p1);
-        }
-        if(ns0==2)
-        {
-            ptsToSearch.erase(p0);
-        }
-        if(ns1==2)
-        {
-            ptsToSearch.erase(p1);
-
-        }
-    }
-#endif
 
 
     std::cout << "Done triangles" <<std::endl;

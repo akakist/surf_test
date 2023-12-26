@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string>
 #include "point.h"
+#include <math.h>
 struct st_malloc
 {
 private:

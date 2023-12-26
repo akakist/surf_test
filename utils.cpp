@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <map>
 #include <set>
+#include <vector>
 std::string loadFile(const std::string& name)
 {
     FILE *f = fopen(name.c_str(), "rb");
