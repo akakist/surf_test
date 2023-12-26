@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string>
 #include "point.h"
+#include <math.h>
 struct st_malloc
 {
 private:
@@ -25,7 +26,7 @@ public:
 
 };
 std::string loadFile(const std::string& name);
-std::vector<std::string> splitString(const char *seps, const std::string & src);
+std::vector<std::string> splitString(const char *seps, const std::string & src, size_t reserve);
 
 #define D2Lmul 100000
 
