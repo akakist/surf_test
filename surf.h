@@ -12,10 +12,16 @@ struct surface
     std::vector<point> pts;
 
     std::vector<point> reperz;
-    std::vector/*reper*/<std::map<long/*dist*/,std::set<int> > > distPtsToRepers;
-    std::vector/*reper*/<std::vector/*pt*/<long/*dist*/> > distInRepersByPt;
+    struct _reperFind
+    {
+        std::vector/*reper*/<std::map<long/*dist*/,std::set<int> > > distPtsToRepers;
+        std::vector/*reper*/<std::vector/*pt*/<long/*dist*/> > distInRepersByPt;
+    };
+    _reperFind reperFind;
 
-    std::set<int> find_1_NearestByReperz(int pt, const std::set<int> &except_pts);
+    std::vector/*pt*/< std::set<int/*ref pt*/> > drawedNeighbours4Pt;
+
+    std::set<int> find_1_NearestByReperz(const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
 
     void removePointFromDistPtsToRepers(int pt);
     void load_points(const std::string& fn);
