@@ -47,11 +47,11 @@ std::string loadFile(const std::string& name)
     return  std::string((char*)buf.buf,fsize);
 
 }
-std::vector<std::string> splitString(const char *seps, const std::string & src)
+std::vector<std::string> splitString(const char *seps, const std::string & src, size_t reserve)
 {
 
-
     std::vector < std::string> res;
+    res.reserve(reserve);
     std::set<char>mm;
     size_t l;
     l =::strlen(seps);

@@ -2,60 +2,204 @@
 #include "utils.h"
 #include <fstream>
 #include <iostream>
+#define MAX_N 3
+std::string dump_rebro(const std::set<int>& rebro)
+{
+    std::string out;
+    out+= std::to_string(*rebro.begin());
+    out+= " ";
+    out+= std::to_string(*rebro.rbegin());
+    return out;
+
+}
+int get_rebro_peer(const std::set<int>& rebro,int n)
+{
+    if(!rebro.count(n))
+        throw std::runtime_error("if(!rebro.count(n))");
+    for(auto& z:rebro)
+    {
+        if(z!=n)
+            return z;
+    }
+    throw std::runtime_error("not found");
+}
 void surface::run(const std::string &fn_in, const std::string& fn_out)
 {
     load_points(fn_in);
-    for(size_t i=0; i<pts.size(); i++)
-    {
-        ptsToSearch.insert(i);
-    }
-//    neighboursForPt.resize(pts.size());
     std::cout << "Calculate reperz" << std::endl;
     calculateReperz();
     std::cout << "done reperz" << std::endl;
 
     std::cout << "Calculate triangles" <<std::endl;
 
-    /// seaching for 3 nearest points for each point
-    /// Save standard deviation up to 3 points to R2_to_pts
-    std::vector<std::set<int>> neighbours;
-    std::map<double/*R2*/,int> R2_to_pts;
-    neighbours.resize(pts.size());
-    for(size_t i=0;i<pts.size();i++)
-    {
-        auto p3=find3NearestByReperz(i);
-        neighbours[i]=p3.second;
-        R2_to_pts[p3.first]=i;
-    }
-    /// first connect the points with the smallest standard deviation while there are free slots
-
-    std::vector/*pt*/< std::set<int/*ref pt*/> > drawedNeighbours4Pt;
     drawedNeighbours4Pt.resize(pts.size());
-    double AVG_R2=0;
-    int AVG_COUNT=0;
-    for(auto& pt: R2_to_pts)
+    std::set<int> except;
+    int p1=0;
+    std::set<int> rebro;
+    rebro.insert(p1);
+    auto __p2=find_1_NearestByReperz(pts[0],rebro,except,0);
+    std::deque<std::set<int>> rebraz;
+    std::deque<std::set<int>> rebraz_copy;
+    std::set<std::set<int> > triangles;
+    if(__p2.size())
     {
-        auto & n=neighbours[pt.second];
-        for(auto &z: n)
+        auto p2=*__p2.begin();
+        std::set<int> rebro;
+        rebro= {p1,p2};
+        point rebro_center=(pts[*rebro.begin()]+pts[*rebro.rbegin()])/2;
+        auto __p3=find_1_NearestByReperz(rebro_center,rebro,except,0);
+        if(__p3.size())
         {
-            auto d=fdist(pts[pt.second], pts[z]);
+            auto p3=*__p3.begin();
+            drawedNeighbours4Pt[p1].insert(p2);
+            drawedNeighbours4Pt[p1].insert(p3);
+            drawedNeighbours4Pt[p2].insert(p1);
+            drawedNeighbours4Pt[p2].insert(p3);
+            drawedNeighbours4Pt[p3].insert(p1);
+            drawedNeighbours4Pt[p3].insert(p2);
+            removePointFromDistPtsToRepers(p1);
+            removePointFromDistPtsToRepers(p2);
+            removePointFromDistPtsToRepers(p3);
 
-            if(AVG_COUNT>5 && sqrt(AVG_R2/(double)AVG_COUNT) * 100. < d)
+            rebraz.push_back({p1,p3});
+            rebraz.push_back({p2,p3});
+            rebraz_copy.push_back({p1,p3});
+            rebraz_copy.push_back({p2,p3});
+            except.insert(p1);
+            except.insert(p2);
+            except.insert(p3);
+            std::set<int> s= {p1,p2,p3};
+            if(s.size()!=3)
+                throw std::runtime_error("if(s.size()!=3)##2");
+            triangles.insert(s);
+
+        }
+    }
+    while(rebraz.size())
+    {
+        auto rebro=rebraz[0];
+        rebraz.pop_front();
+        auto p1=*rebro.begin();
+        auto p2=*rebro.rbegin();
+        point rebro_center=(pts[p1]+pts[p2])/2;
+        auto _p3=find_1_NearestByReperz(rebro_center,rebro,except,0);
+
+        if(_p3.size())
+        {
+
+            auto p3=*_p3.begin();
+            auto d=fdist(pts[p3],rebro_center);
+            if(d>110)
             {
-                /// If the distance between points is too greater than the average between points, then we do not insert these points.
-//                continue;
+                continue;
             }
-            AVG_R2=qw(d);
 
-            /// If both points have free slots, then insert them mutually
-            if(drawedNeighbours4Pt[pt.second].size()<3 && drawedNeighbours4Pt[z].size()<3)
+            rebraz.push_back({p1,p3});
+            rebraz.push_back({p2,p3});
+
+            rebraz_copy.push_back({p1,p3});
+            rebraz_copy.push_back({p2,p3});
+
+            drawedNeighbours4Pt[p1].insert(p2);
+            drawedNeighbours4Pt[p1].insert(p3);
+            drawedNeighbours4Pt[p2].insert(p1);
+            drawedNeighbours4Pt[p2].insert(p3);
+            drawedNeighbours4Pt[p3].insert(p1);
+            drawedNeighbours4Pt[p3].insert(p2);
+            removePointFromDistPtsToRepers(p1);
+            removePointFromDistPtsToRepers(p2);
+            removePointFromDistPtsToRepers(p3);
+            std::set<int> s= {p1,p2,p3};
+            if(s.size()!=3)
+                throw std::runtime_error("if(s.size()!=3)##1");
+            triangles.insert(s);
+
+        }
+        else continue;
+
+    }
+
+    std::map<int,std::set<int/*rebro_copy_idx*/> > ptIncludesRebraz;
+    for(int i=0; i<rebraz_copy.size(); i++)
+    {
+        auto& r=rebraz_copy[i];
+        ptIncludesRebraz[*r.begin()].insert(i);
+        ptIncludesRebraz[*r.rbegin()].insert(i);
+    }
+
+    std::deque<std::set<int> > added_tri;
+    /// connect points with 2 neigbours
+    int matchcount=0;
+    for(int i=0; i<drawedNeighbours4Pt.size(); i++)
+    {
+        if(drawedNeighbours4Pt[i].size()==2)
+        {
+            auto& rsIdx=ptIncludesRebraz[i];
+
+            for(auto& rIdx:rsIdx)
             {
-                drawedNeighbours4Pt[pt.second].insert(z);
-                drawedNeighbours4Pt[z].insert(pt.second);
-                AVG_COUNT++;
+                auto rebro=rebraz_copy[rIdx];
+                int peer=get_rebro_peer(rebro,i);
+                auto& rs2idx=ptIncludesRebraz[peer];
+                bool matched=false;
+                for(auto& r2idx:rs2idx)
+                {
+                    auto rebro2=rebraz_copy[r2idx];
+                    int peer2=get_rebro_peer(rebro2,peer);
+                    if(peer2==i)
+                    {
+                        matched=true;
+                        matchcount++;
+                    }
+                }
+                if(matched)
+                {
+                    for(auto& r2idx:rs2idx)
+                    {
+                        auto rebro2=rebraz_copy[r2idx];
+                        int peer2=get_rebro_peer(rebro2,peer);
+                        if(peer2==i)
+                            continue;
+                        if(drawedNeighbours4Pt[peer2].size()==2)
+                        {
+                            std::set<int> s= {i,peer,peer2};
+                            if(s.size()!=3)
+                                throw std::runtime_error("if(s.size()!=3)##1");
+                            triangles.insert(s);
+                            added_tri.push_back(s);
+
+                        }
+                    }
+
+                }
+
             }
         }
     }
+    std::cout << "matchcount " << matchcount << std::endl;
+    for(auto& z:added_tri)
+    {
+        auto s=z;
+        std::vector<int>v;
+        while(s.size())
+        {
+            v.push_back(*s.begin());
+            s.erase(s.begin());
+        }
+        if(v.size()!=3)
+            throw std::runtime_error("if(v.size()!=3)");
+        drawedNeighbours4Pt[v[0]].insert(v[1]);
+        drawedNeighbours4Pt[v[0]].insert(v[2]);
+        drawedNeighbours4Pt[v[1]].insert(v[2]);
+    }
+
+
+
+    /// seaching for 3 nearest points for each point
+    /// Save standard deviation up to 3 points to R2_to_pts
+    ///
+    ///
+    ///
 
     std::map<int,int> cnt;
     for(auto & z: drawedNeighbours4Pt)
@@ -64,53 +208,11 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     }
     for(auto &z: cnt)
     {
-        std::cout << "by count " << z.first  << " " << z.second << std::endl;
+        std::cout << "by count of linked neigbours " << z.first  << " " << z.second << std::endl;
     }
-
-
 
     std::cout << "Done triangles" <<std::endl;
 
-    std::set<std::set<int> > triangles;
-    for(size_t i=0; i<drawedNeighbours4Pt.size(); i++)
-    {
-        auto sz=drawedNeighbours4Pt[i].size();
-        switch(sz)
-        {
-        case 2:
-        {
-            std::set<int> tri;
-            tri=drawedNeighbours4Pt[i];
-            tri.insert(i);
-            triangles.insert(std::move(tri));
-        }
-        break;
-        case 1:
-            continue;
-            throw std::runtime_error("case 1:");
-        case 0:
-            continue;
-            throw std::runtime_error("case 0:");
-        case 3:
-        {
-            std::vector<int> t;
-            t.reserve(3);
-            for(auto& z: drawedNeighbours4Pt[i])
-            {
-                t.push_back(z);
-            }
-            triangles.insert({(int)i,t[0],t[1]});
-            triangles.insert({(int)i,t[0],t[2]});
-            triangles.insert({(int)i,t[1],t[2]});
-        }
-        break;
-        default:
-            throw std::runtime_error("default:"+ std::to_string(sz));
-        }
-
-
-
-    }
     std::cout << "Print out" << std::endl;
     std::ofstream fout(fn_out);
     fout<<"*Nodes"<<std::endl;
@@ -122,6 +224,8 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     int idx=1;
     for(auto& t: triangles)
     {
+        if(t.size()!=3)
+            throw std::runtime_error("if(t.size()!=3)");
         fout<< idx ;
         for(auto&z: t)
         {
@@ -132,21 +236,19 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     }
     std::cout << "Print done" << std::endl;
 
-
 }
-#ifdef KALL
 void surface::removePointFromDistPtsToRepers(int pt)
 {
     for(size_t i=0; i<reperz.size(); i++)
     {
-        auto d=distInRepersByPt[i][pt];
-        distPtsToRepers[i][d].erase(pt);
-        if(distPtsToRepers[i][d].empty())
-            distPtsToRepers[i].erase(d);
+        auto &d_r_pt=reperFind.distInRepersByPt[i];
+        auto d=d_r_pt[pt];
+        auto & dptr=reperFind.distPtsToRepers[i];
+        dptr[d].erase(pt);
+        if(dptr[d].empty())
+            dptr.erase(d);
     }
 }
-#endif
-
 
 void surface::calculateReperz()
 {
@@ -156,36 +258,39 @@ void surface::calculateReperz()
     point avg;
     for(size_t i=0; i<pts.size(); i++)
     {
+        auto & p=pts[i];
         avg+=pts[i];
-        if(pts[i].x>max.x) max.x=pts[i].x;
-        if(pts[i].y>max.y) max.y=pts[i].y;
-        if(pts[i].z>max.z) max.z=pts[i].z;
+        if(p.x>max.x) max.x=p.x;
+        if(p.y>max.y) max.y=p.y;
+        if(p.z>max.z) max.z=p.z;
 
-        if(pts[i].x<min.x) min.x=pts[i].x;
-        if(pts[i].y<min.y) min.y=pts[i].y;
-        if(pts[i].z<min.z) min.z=pts[i].z;
-
+        if(p.x<min.x) min.x=p.x;
+        if(p.y<min.y) min.y=p.y;
+        if(p.z<min.z) min.z=p.z;
 
     }
     avg/=double(pts.size());
 
     point d=max-min;
+    d+=d+d;
 
-    for(int ix=-1; ix<2; ix++)
+    int step=1;
+    for(int ix=-1; ix<2; ix+=step)
     {
-        for(int iy=-1; iy<2; iy++)
+        for(int iy=-1; iy<2; iy+=step)
         {
-            for(int iz=-1; iz<2; iz++)
+            for(int iz=-1; iz<2; iz+=step)
             {
                 reperz.push_back(avg+point(d.x*(double)ix,d.y*(double)iy,d.z*(double)iz));
             }
 
         }
     }
+    std::cout << "total reperz count " << reperz.size() << std::endl;
 
-    distPtsToRepers.resize(reperz.size());
-    distInRepersByPt.resize(reperz.size());
-    for(auto& z: distInRepersByPt)
+    reperFind.distPtsToRepers.resize(reperz.size());
+    reperFind.distInRepersByPt.resize(reperz.size());
+    for(auto& z: reperFind.distInRepersByPt)
     {
         z.resize(pts.size());
     }
@@ -194,8 +299,8 @@ void surface::calculateReperz()
         for(size_t j=0; j<reperz.size(); j++)
         {
             auto d=dist(pts[i],reperz[j]);
-            distPtsToRepers[j][d].insert(i);
-            distInRepersByPt[j][i]=d;
+            reperFind.distPtsToRepers[j][d].insert(i);
+            reperFind.distInRepersByPt[j][i]=d;
         }
     }
 
@@ -203,12 +308,13 @@ void surface::calculateReperz()
 void surface::load_points(const std::string& fn)
 {
     auto b=loadFile(fn);
-    auto ls=splitString("\r\n",b);
+
+    auto ls=splitString("\r\n",b, 70000);
     for(auto& l:ls)
     {
         if(l.size() && l[0]=='*')
             continue;
-        auto v=splitString(" ",l);
+        auto v=splitString(" ",l,4);
         if(v.size()==4)
         {
             point p;
@@ -216,7 +322,6 @@ void surface::load_points(const std::string& fn)
             p.x=atof(v[1].c_str());
             p.y=atof(v[2].c_str());
             p.z=atof(v[3].c_str());
-            ptIdx2TaskId.push_back(id);
             pts.push_back(p);
         }
     }
@@ -225,11 +330,11 @@ void surface::load_points(const std::string& fn)
     return;
 }
 
-
-std::pair<double,std::set<int> > surface::find3NearestByReperz(int pt)
+std::pair<double,std::set<int> > surface::find_3_NearestPointsByReperz(int pt)
 {
     //// calculate dist to each reper
     std::vector<long> distByReper;
+    distByReper.reserve(pts.size());
     for(auto& z: reperz)
     {
         distByReper.push_back(dist(pts[pt],z));
@@ -241,16 +346,14 @@ std::pair<double,std::set<int> > surface::find3NearestByReperz(int pt)
         /// exclude found neighbours
         std::vector<int> foundForReper;
         foundForReper.reserve(3);
-        auto it=distPtsToRepers[i].upper_bound(distByReper[i]);
-        while(foundForReper.empty() && it!=distPtsToRepers[i].end())
+        auto it=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
+        while(foundForReper.size()<3 && it!=reperFind.distPtsToRepers[i].end())
         {
             for(auto &z:it->second)
             {
                 if(z!=pt)
                     foundForReper.push_back(z);
             }
-            if(foundForReper.size()>=3)
-                break;
             it++;
 
         }
@@ -264,9 +367,7 @@ std::pair<double,std::set<int> > surface::find3NearestByReperz(int pt)
         throw std::runtime_error("if(resTmp.empty())");
 
     /// use nearest element from set found from repers
-//    std::vector<int> selected=*resTmp.begin();
     std::map<double,int> mp;
-//    double min_d=10e50;
     for(auto& z: resTmp)
     {
         double d=fdist(pts[pt],pts[z]);
@@ -277,7 +378,7 @@ std::pair<double,std::set<int> > surface::find3NearestByReperz(int pt)
     if(mp.size()<3) throw std::runtime_error("if(mp.size()<3)");
     double R2=0;
 
-    for(int i=0;i<3;i++)
+    for(int i=0; i<3; i++)
     {
         R2+=qw(mp.begin()->first);
         ret.insert(mp.begin()->second);
@@ -285,7 +386,64 @@ std::pair<double,std::set<int> > surface::find3NearestByReperz(int pt)
     }
 
     return {sqrt(R2),ret};
+}
+std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
+{
+    //// calculate dist to each reper
+    std::vector<long> distByReper;
+    distByReper.reserve(pts.size());
+    for(auto& z: reperz)
+    {
+        distByReper.push_back(dist(pt,z));
+    }
+    std::set<int> resTmp;
+    for(size_t i=0; i<distByReper.size(); i++)
+    {
+#define nPTS 30
+        /// find nearest upper_bound element in each reper
+        /// exclude found neighbours
+        std::vector<int> foundForReper;
+        foundForReper.reserve(nPTS);
+        auto it=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
+        while(foundForReper.size()<nPTS && it!=reperFind.distPtsToRepers[i].end())
+        {
+            for(auto &z:it->second)
+            {
+                if(drawedNeighbours4Pt[z].size()!=refcount)
+                    continue;
+                if(rebro.count(z))
+                    continue;
+                if(!except_pts.count(z))
+                {
+                    foundForReper.push_back(z);
+                }
+            }
+            it++;
+        }
+        for(auto& z: foundForReper)
+        {
+            resTmp.insert(z);
+        }
 
-//    return selected;
+    }
+    std::set<int> ret;
+    if(resTmp.empty())
+        return ret;
+
+    /// use nearest element from set found from repers
+    int selected=*resTmp.begin();
+    double min_d=std::numeric_limits<double>::max();
+    for(auto& z: resTmp)
+    {
+        double d=dist(pt,pts[z]);
+        if(d<min_d)
+        {
+            min_d=d;
+            selected=z;
+        }
+
+    }
+    ret.insert(selected);
+    return ret;
 
 }
