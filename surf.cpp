@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <fstream>
 #include <iostream>
+#define MAX_N 3
 void surface::run(const std::string &fn_in, const std::string& fn_out)
 {
     load_points(fn_in);
@@ -43,7 +44,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 //            AVG_R2=qw(d);
 
             /// If both points have free slots, then insert them mutually
-            if(drawedNeighbours4Pt[pt.second].size()<3 && drawedNeighbours4Pt[z].size()<3)
+            if(drawedNeighbours4Pt[pt.second].size()<MAX_N && drawedNeighbours4Pt[z].size()<MAX_N)
             {
                 drawedNeighbours4Pt[pt.second].insert(z);
                 drawedNeighbours4Pt[z].insert(pt.second);
@@ -55,7 +56,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     for(size_t i=0;i<drawedNeighbours4Pt.size();i++)
     {
         auto& p=drawedNeighbours4Pt[i];
-        if(p.size()==3)
+        if(p.size()==MAX_N)
         {
             removePointFromDistPtsToRepers(i);
         }
@@ -64,18 +65,22 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     for(size_t i=0;i<drawedNeighbours4Pt.size();i++)
     {
         auto& p=drawedNeighbours4Pt[i];
-        while(p.size()<2)
+        while(p.size()<MAX_N-1)
         {
-            int nei=find_1_NearestByReperz(i, p);
-            drawedNeighbours4Pt[i].insert(nei);
-            drawedNeighbours4Pt[nei].insert(i);
-            if(drawedNeighbours4Pt[i].size()==3)
-                removePointFromDistPtsToRepers(i);
-            if(drawedNeighbours4Pt[nei].size()==3)
-                removePointFromDistPtsToRepers(nei);
+            auto neis=find_1_NearestByReperz(i, p);
+            for(auto& nei:neis)
+            {
+                drawedNeighbours4Pt[i].insert(nei);
+                drawedNeighbours4Pt[nei].insert(i);
+                if(drawedNeighbours4Pt[i].size()==3)
+                    removePointFromDistPtsToRepers(i);
+                if(drawedNeighbours4Pt[nei].size()==3)
+                    removePointFromDistPtsToRepers(nei);
+            }
 
         }
     }
+
 
 
     std::map<int,int> cnt;
@@ -305,7 +310,7 @@ std::pair<double,std::set<int> > surface::find_3_NearestPointsByReperz(int pt)
 
     return {sqrt(R2),ret};
 }
-int surface::find_1_NearestByReperz(int pt, const std::set<int> &except_pts)
+std::set<int> surface::find_1_NearestByReperz(int pt, const std::set<int> &except_pts)
 {
     //// calculate dist to each reper
     std::vector<long> distByReper;
@@ -338,12 +343,14 @@ int surface::find_1_NearestByReperz(int pt, const std::set<int> &except_pts)
         }
 
     }
+    std::set<int> ret;
     if(resTmp.empty())
-        throw std::runtime_error("if(resTmp.empty())");
+        return ret;
+//        throw std::runtime_error("if(resTmp.empty())");
 
     /// use nearest element from set found from repers
     int selected=*resTmp.begin();
-    double min_d=10e50;
+    double min_d=std::numeric_limits<double>::max();
     for(auto& z: resTmp)
     {
         double d=dist(pts[pt],pts[z]);
@@ -354,6 +361,7 @@ int surface::find_1_NearestByReperz(int pt, const std::set<int> &except_pts)
         }
 
     }
-    return selected;
+    ret.insert(selected);
+    return ret;
 
 }

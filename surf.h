@@ -15,7 +15,7 @@ struct surface
     std::vector/*reper*/<std::map<long/*dist*/,std::set<int> > > distPtsToRepers;
     std::vector/*reper*/<std::vector/*pt*/<long/*dist*/> > distInRepersByPt;
 
-    int find_1_NearestByReperz(int pt, const std::set<int> &except_pts);
+    std::set<int> find_1_NearestByReperz(int pt, const std::set<int> &except_pts);
 
     void removePointFromDistPtsToRepers(int pt);
     void load_points(const std::string& fn);
