@@ -331,63 +331,6 @@ void surface::load_points(const std::string& fn)
     return;
 }
 
-std::pair<double,std::set<int> > surface::find_3_NearestPointsByReperz(int pt)
-{
-    //// calculate dist to each reper
-    std::vector<long> distByReper;
-    distByReper.reserve(pts.size());
-    for(auto& z: reperz)
-    {
-        distByReper.push_back(dist(pts[pt],z));
-    }
-    std::set<int> resTmp;
-    for(size_t i=0; i<distByReper.size(); i++)
-    {
-        /// find nearest upper_bound element in each reper
-        /// exclude found neighbours
-        std::vector<int> foundForReper;
-        foundForReper.reserve(3);
-        auto it=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
-        while(foundForReper.size()<3 && it!=reperFind.distPtsToRepers[i].end())
-        {
-            for(auto &z:it->second)
-            {
-                if(z!=pt)
-                    foundForReper.push_back(z);
-            }
-            it++;
-
-        }
-        for(auto& z: foundForReper)
-        {
-            resTmp.insert(z);
-        }
-
-    }
-    if(resTmp.empty())
-        throw std::runtime_error("if(resTmp.empty())");
-
-    /// use nearest element from set found from repers
-    std::map<double,int> mp;
-    for(auto& z: resTmp)
-    {
-        double d=fdist(pts[pt],pts[z]);
-        mp.insert({d,z});
-
-    }
-    std::set<int> ret;
-    if(mp.size()<3) throw std::runtime_error("if(mp.size()<3)");
-    double R2=0;
-
-    for(int i=0; i<3; i++)
-    {
-        R2+=qw(mp.begin()->first);
-        ret.insert(mp.begin()->second);
-        mp.erase(mp.begin());
-    }
-
-    return {sqrt(R2),ret};
-}
 std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
 {
     //// calculate dist to each reper

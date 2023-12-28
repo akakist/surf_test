@@ -25,7 +25,6 @@ struct surface
 
     void removePointFromDistPtsToRepers(int pt);
     void load_points(const std::string& fn);
-    std::pair<double, std::set<int> > find_3_NearestPointsByReperz(int pt);
     void calculateReperz();
     void run(const std::string &fn, const std::string &fn_out);
 
