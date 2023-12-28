@@ -36,9 +36,32 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     drawedNeighbours4Pt.resize(pts.size());
     std::set<int> except;
     int p1=0;
-    std::set<int> rebro;
-    rebro.insert(p1);
-    auto __p2=find_1_NearestByReperz(pts[0],rebro,except,0);
+    std::set<int> rebro{p1};
+//    rebro.insert(p1);
+    auto __p2=find_1_NearestByReperz(pts[p1],rebro,{},0);
+    {
+        ///test
+        int sel=0;
+        double min=std::numeric_limits<double>::max();
+        for(int i=0;i<pts.size();i++)
+        {
+            if(i!=p1)
+            {
+                auto d=fdist(pts[p1],pts[i]);
+                if(d<min)
+                {
+                    min=d;
+                    sel=i;
+                }
+            }
+        }
+        for(auto &z:__p2)
+        {
+            printf("rep find %d %lf\n",*__p2.begin(),fdist(pts[*__p2.begin()],pts[p1]));
+            printf("brut find %d %lf\n",sel,fdist(pts[p1],pts[sel]));
+
+        }
+    }
     std::deque<std::set<int>> rebraz;
     std::deque<std::set<int>> rebraz_copy;
     std::set<std::set<int> > triangles;
@@ -275,18 +298,28 @@ void surface::calculateReperz()
     point d=max-min;
     d+=d+d;
 
-    int step=1;
-    for(int ix=-1; ix<2; ix+=step)
-    {
-        for(int iy=-1; iy<2; iy+=step)
-        {
-            for(int iz=-1; iz<2; iz+=step)
-            {
-                reperz.push_back(avg+point(d.x*(double)ix,d.y*(double)iy,d.z*(double)iz));
-            }
+    std::vector<double> ar={-1,0,1};
+//    for(double ix:ar)
+//    {
+//        for(double iy:ar)
+//        {
+//            for(double iz:ar)
+//            {
+//                reperz.push_back(avg+point(d.x*ix,d.y*iy,d.z*iz));
+//            }
 
-        }
-    }
+//        }
+//    }
+    reperz.push_back(avg+point(0,0,0));
+    reperz.push_back(avg+point(d.x,d.y,d.z));
+
+    reperz.push_back(avg+point(d.x,0,0));
+    reperz.push_back(avg+point(0,d.y,0));
+    reperz.push_back(avg+point(0,0,d.z));
+
+    reperz.push_back(avg+point(-d.x,0,0));
+    reperz.push_back(avg+point(0,-d.y,0));
+    reperz.push_back(avg+point(0,0,-d.z));
     std::cout << "total reperz count " << reperz.size() << std::endl;
 
     reperFind.distPtsToRepers.resize(reperz.size());
@@ -334,14 +367,105 @@ void surface::load_points(const std::string& fn)
 std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
 {
     //// calculate dist to each reper
+
     std::vector<long> distByReper;
-    distByReper.reserve(pts.size());
-    for(auto& z: reperz)
+    distByReper.resize(pts.size());
+
+    for(int i=0;i<reperz.size();i++)
     {
-        distByReper.push_back(dist(pt,z));
+        distByReper[i]=dist(pt,reperz[i]);
     }
-    std::set<int> resTmp;
-    for(size_t i=0; i<distByReper.size(); i++)
+    std::vector<std::map<long/*dist*/,std::set<int>>::iterator> itersUp,itersDown;
+    itersUp.resize(reperz.size());
+    itersDown.resize(reperz.size());
+    for(size_t i=0; i<reperz.size(); i++)
+    {
+        itersUp[i]=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
+        itersDown[i]=itersUp[i];
+    }
+    bool found=false;
+    int found_pt=0;
+    std::set<size_t> finished_rpUp;
+    std::set<size_t> finished_rpDown;
+    std::map<int,int > heap;
+    while(!found && finished_rpUp.size()<reperz.size()&& finished_rpDown.size()<reperz.size() && !found)
+    {
+        for(size_t i=0; i<reperz.size(); i++)
+        {
+            {
+                auto& it=itersUp[i];
+                if(it!=reperFind.distPtsToRepers[i].end())
+                {
+                    for(auto &z:it->second)
+                    {
+                        if(drawedNeighbours4Pt[z].size()!=refcount)
+                            continue;
+                        if(rebro.count(z))
+                            continue;
+                        if(!except_pts.count(z))
+                        {
+                            heap[z]++;
+//                            printf("z %d heap[z] %d\n",z,heap[z]);
+                            if(heap[z]==reperz.size())
+                            {
+//                                printf("found\n");
+                                found_pt=z;
+                                found=true;
+                                break;
+                            }
+                        }
+                    }
+                    it++;
+                }
+                else{
+                    finished_rpUp.insert(i);
+    //                printf("finished_rp size %d\n",finished_rp.size());
+                }
+            }
+            {
+                auto& it=itersDown[i];
+                if(it!=reperFind.distPtsToRepers[i].end())
+                {
+                    for(auto &z:it->second)
+                    {
+                        if(drawedNeighbours4Pt[z].size()!=refcount)
+                            continue;
+                        if(rebro.count(z))
+                            continue;
+                        if(!except_pts.count(z))
+                        {
+                            heap[z]++;
+//                            printf("z %d heap[z] %d\n",z,heap[z]);
+                            if(heap[z]==reperz.size())
+                            {
+//                                printf("found\n");
+                                found_pt=z;
+                                found=true;
+                                break;
+                            }
+                        }
+                    }
+                    if(it==reperFind.distPtsToRepers[i].begin())
+                    {
+                        it=reperFind.distPtsToRepers[i].end();
+                        finished_rpDown.insert(i);
+                    }
+                    else
+                        it--;
+                }
+
+//                else{
+//                    finished_rp.insert(i);
+//    //                printf("finished_rp size %d\n",finished_rp.size());
+//                }
+            }
+
+        }
+    }
+    std::set<int> ret={found_pt};
+    return ret;
+#ifdef KALL
+    for(size_t i=0; i<reperz.size(); i++)
     {
 #define nPTS 30
         /// find nearest upper_bound element in each reper
@@ -360,16 +484,25 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
                 if(!except_pts.count(z))
                 {
                     foundForReper.push_back(z);
+                    heap[i]++;
+                    if(heap[i]>reperz.size())
+                    {
+                        printf("found");
+                    }
                 }
             }
             it++;
         }
         for(auto& z: foundForReper)
         {
-            resTmp.insert(z);
+            resTmp[i].insert(z);
         }
+    }
+    for(int i=0;i<resTmp.size();i++)
+    {
 
     }
+
     std::set<int> ret;
     if(resTmp.empty())
         return ret;
@@ -389,5 +522,5 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
     }
     ret.insert(selected);
     return ret;
-
+#endif
 }

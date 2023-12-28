@@ -27,6 +27,8 @@ struct surface
     void load_points(const std::string& fn);
     void calculateReperz();
     void run(const std::string &fn, const std::string &fn_out);
+    void func(int stage);
+
 
 };
 
