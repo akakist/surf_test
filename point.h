@@ -21,6 +21,7 @@ struct point
     friend  inline const point operator+(const point &, const point &);
     friend  inline const point operator-(const point &, const point &);
     friend  inline const point operator/(const point &, double);
+    friend  inline const point operator/(const point &, const point &);
 
 };
 inline const point operator+(const point &p1, const point &p2)
@@ -34,6 +35,10 @@ inline const point operator-(const point &p1, const point &p2)
 inline const point operator/(const point &p,double c)
 {
     return point(p.x/c, p.y/c, p.z/c);
+}
+inline const point operator/(const point &p,const point& c)
+{
+    return point(p.x/c.x, p.y/c.y, p.z/c.z);
 }
 
 #endif // POINT_H

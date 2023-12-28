@@ -240,70 +240,62 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 }
 void surface::removePointFromDistPtsToRepers(int pt)
 {
-    for(size_t i=0; i<reperz.size(); i++)
-    {
-        auto &d_r_pt=reperFind.distInRepersByPt[i];
-        auto d=d_r_pt[pt];
-        auto & dptr=reperFind.distPtsToRepers[i];
-        dptr[d].erase(pt);
-        if(dptr[d].empty())
-            dptr.erase(d);
-    }
+    auto c=boxes.pt2box[pt];
+    boxes.pts_in_box[c[0]][c[1]][c[2]].erase(pt);
+    boxes.pt2box.erase(pt);
+
+
+
 }
 
 void surface::calculateReperz()
 {
-    point min=pts[0];
-    point max=pts[0];
+    boxes.min=pts[0];
+    boxes.max=pts[0];
 
     point avg;
     for(size_t i=0; i<pts.size(); i++)
     {
         auto & p=pts[i];
         avg+=pts[i];
-        if(p.x>max.x) max.x=p.x;
-        if(p.y>max.y) max.y=p.y;
-        if(p.z>max.z) max.z=p.z;
+        if(p.x>boxes.max.x) boxes.max.x=p.x;
+        if(p.y>boxes.max.y) boxes.max.y=p.y;
+        if(p.z>boxes.max.z) boxes.max.z=p.z;
 
-        if(p.x<min.x) min.x=p.x;
-        if(p.y<min.y) min.y=p.y;
-        if(p.z<min.z) min.z=p.z;
+        if(p.x<boxes.min.x) boxes.min.x=p.x;
+        if(p.y<boxes.min.y) boxes.min.y=p.y;
+        if(p.z<boxes.min.z) boxes.min.z=p.z;
 
     }
     avg/=double(pts.size());
 
-    point d=max-min;
-    d+=d+d;
 
-    int step=1;
-    for(int ix=-1; ix<2; ix+=step)
+    boxes.figure_size=boxes.max-boxes.min;
+
+    boxes.figure_size_delta=boxes.figure_size/(SLICES+1);
+
+    boxes.pts_in_box.resize(SLICES+1);
+    for(int i=0;i<SLICES;i++)
     {
-        for(int iy=-1; iy<2; iy+=step)
+        boxes.pts_in_box[i].resize(SLICES+1);
+        for(int j=0;j<SLICES;j++)
         {
-            for(int iz=-1; iz<2; iz+=step)
-            {
-                reperz.push_back(avg+point(d.x*(double)ix,d.y*(double)iy,d.z*(double)iz));
-            }
+            boxes.pts_in_box[i][j].resize(SLICES+1);
 
         }
-    }
-    std::cout << "total reperz count " << reperz.size() << std::endl;
-
-    reperFind.distPtsToRepers.resize(reperz.size());
-    reperFind.distInRepersByPt.resize(reperz.size());
-    for(auto& z: reperFind.distInRepersByPt)
-    {
-        z.resize(pts.size());
     }
     for(size_t i=0; i<pts.size(); i++)
     {
-        for(size_t j=0; j<reperz.size(); j++)
-        {
-            auto d=dist(pts[i],reperz[j]);
-            reperFind.distPtsToRepers[j][d].insert(i);
-            reperFind.distInRepersByPt[j][i]=d;
-        }
+        auto&p=pts[i];
+        auto ya=boxes.calcBox(p);
+
+        printf("yashik %d %d %d\n",ya[0],ya[1],ya[2]);
+        boxes.pts_in_box[ya[0]][ya[1]][ya[2]].insert(i);
+        boxes.pt2box[i]=ya;
     }
+
+
+
 
 }
 void surface::load_points(const std::string& fn)
@@ -330,8 +322,8 @@ void surface::load_points(const std::string& fn)
 
     return;
 }
-
-std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
+#ifdef KALL
+std::set<int> surface::find_1_NearestByReperz2(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
 {
     //// calculate dist to each reper
     std::vector<long> distByReper;
@@ -390,4 +382,100 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
     ret.insert(selected);
     return ret;
 
+}
+#endif
+std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
+{
+    std::set<int> s;
+
+    for(int depth=0;s.size()<20 && depth<20;depth++)
+    {
+        auto b=boxes.getContent2(boxes.calcBox(pt),depth);
+        for(auto& z: b)
+        {
+            if(drawedNeighbours4Pt[z].size()!=refcount)
+                continue;
+            if(rebro.count(z))
+                continue;
+            if(!except_pts.count(z))
+            {
+                s.insert(z);
+            }
+
+        }
+    }
+    int selected=*s.begin();
+    double min_d=std::numeric_limits<double>::max();
+    for(auto& z: s)
+    {
+        double d=dist(pt,pts[z]);
+        if(d<min_d)
+        {
+            min_d=d;
+            selected=z;
+        }
+
+    }
+    std::set<int> ret;
+    ret.insert(selected);
+    return ret;
+
+#ifdef KALL
+    //// calculate dist to each reper
+    std::vector<long> distByReper;
+    distByReper.reserve(pts.size());
+    for(auto& z: reperz)
+    {
+        distByReper.push_back(dist(pt,z));
+    }
+    std::set<int> resTmp;
+    for(size_t i=0; i<distByReper.size(); i++)
+    {
+#define nPTS 30
+        /// find nearest upper_bound element in each reper
+        /// exclude found neighbours
+        std::vector<int> foundForReper;
+        foundForReper.reserve(nPTS);
+        auto it=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
+        while(foundForReper.size()<nPTS && it!=reperFind.distPtsToRepers[i].end())
+        {
+            for(auto &z:it->second)
+            {
+                if(drawedNeighbours4Pt[z].size()!=refcount)
+                    continue;
+                if(rebro.count(z))
+                    continue;
+                if(!except_pts.count(z))
+                {
+                    foundForReper.push_back(z);
+                }
+            }
+            it++;
+        }
+        for(auto& z: foundForReper)
+        {
+            resTmp.insert(z);
+        }
+
+    }
+    std::set<int> ret;
+    if(resTmp.empty())
+        return ret;
+
+    /// use nearest element from set found from repers
+    int selected=*resTmp.begin();
+    double min_d=std::numeric_limits<double>::max();
+    for(auto& z: resTmp)
+    {
+        double d=dist(pt,pts[z]);
+        if(d<min_d)
+        {
+            min_d=d;
+            selected=z;
+        }
+
+    }
+    ret.insert(selected);
+    return ret;
+#endif
 }
