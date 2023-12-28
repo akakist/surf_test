@@ -2,6 +2,7 @@
 #include "utils.h"
 #include <fstream>
 #include <iostream>
+#include <deque>
 #define MAX_N 3
 std::string dump_rebro(const std::set<int>& rebro)
 {
