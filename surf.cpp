@@ -78,7 +78,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
         point rc=rebro_center(rebro12);
 
-        auto _p3=find_1_NearestByReperz(rc,rebro12->points,except,0);
+        auto _p3=find_1_NearestByReperz(rc,rebro12->points,rebro12->opposize_pts,0);
 
 
         if(_p3.size())
