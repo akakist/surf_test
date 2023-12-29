@@ -49,13 +49,13 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     int p1=0;
     std::set<int> rebro;
     rebro.insert(p1);
-    auto __p2=find_1_NearestByReperz(pts[0],rebro,except,0);
     std::deque<REF_getter<rebro_container> > rebras;
 //    std::deque<REF_getter<rebro_container> > rebras_copy;
     std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
     std::set<std::set<int> > triangles;
     std::map<int,std::set<REF_getter<rebro_container>> > ptIncludesRebras;
 
+    auto __p2=find_1_NearestByReperz(pts[0],rebro,except,0);
     if(__p2.size())
     {
         auto p2=*__p2.begin();
@@ -107,7 +107,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                     ptIncludesRebras[p3].insert(rebro23);
                 }
             }
-            rebras.push_back(rebro23);
 
             {
                 auto it2=all_rebras.find(s_13);
@@ -122,6 +121,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                     ptIncludesRebras[p3].insert(rebro13);
                 }
             }
+            rebras.push_back(rebro23);
             rebras.push_back(rebro13);
 //            rebras_copy.push_back(rebro13);
 
@@ -129,16 +129,16 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             rebro23->opposize_pts.insert(p1);
             rebro13->opposize_pts.insert(p2);
 
-            if(rebro12->opposize_pts.size()<2)
-                rebras.push_back(rebro12);
-            if(rebro13->opposize_pts.size()<2)
-                rebras.push_back(rebro13);
-            if(rebro23->opposize_pts.size()<2)
-                rebras.push_back(rebro23);
+//            if(rebro12->opposize_pts.size()<2)
+//                rebras.push_back(rebro12);
+//            if(rebro13->opposize_pts.size()<2)
+//                rebras.push_back(rebro13);
+//            if(rebro23->opposize_pts.size()<2)
+//                rebras.push_back(rebro23);
 
-            except.insert(p1);
-            except.insert(p2);
-            except.insert(p3);
+//            except.insert(p1);
+//            except.insert(p2);
+//            except.insert(p3);
 
             drawedNeighbours4Pt[p1].insert(p2);
             drawedNeighbours4Pt[p1].insert(p3);
@@ -146,7 +146,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             drawedNeighbours4Pt[p2].insert(p3);
             drawedNeighbours4Pt[p3].insert(p1);
             drawedNeighbours4Pt[p3].insert(p2);
-            removePointFromDistPtsToRepers({p1,p2,p3});
+//            removePointFromDistPtsToRepers({p1,p2,p3});
             std::set<int> s= {p1,p2,p3};
             if(s.size()!=3)
                 throw std::runtime_error("if(s.size()!=3)##1");
@@ -325,19 +325,15 @@ void surface::calculateReperz()
         if(p.z<min.z) min.z=p.z;
 
     }
-//    avg/=double(pts.size());
 
     point d=max;
     d.sub(min);
-//    d+=d+d;
-
-//    int step=1;
-    double N=3;
-    for(double x=min.x; x<max.x+1; x+=d.x/N)
+    real N=2;
+    for(real x=min.x; x<max.x+1; x+=d.x/N)
     {
-        for(double y=min.y; y<max.y+1; y+=d.y/N)
+        for(real y=min.y; y<max.y+1; y+=d.y/N)
         {
-            for(double z=min.z; z<max.z+1; z+=d.z/N)
+            for(real z=min.z; z<max.z+1; z+=d.z/N)
             {
                 reperz.push_back(point(x,y,z));
             }
@@ -357,7 +353,7 @@ void surface::calculateReperz()
     {
         for(size_t j=0; j<reperz.size(); j++)
         {
-            auto d=dist(pts[i],reperz[j]);
+            auto d=fdist(pts[i],reperz[j]);
             reperFind.distPtsToRepers[j][d].insert(i);
             reperFind.distInRepersByPt[j][i]=d;
         }
@@ -398,7 +394,7 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
     _distByReperV.resize(reperz.size());
     for(int i=0; i<reperz.size(); i++)
     {
-        auto d=dist(pt,reperz[i]);
+        auto d=fdist(pt,reperz[i]);
         _distByReperMap[d]=i;
         _distByReperV[i]=d;
 
@@ -435,7 +431,7 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
     int iter_cnt=0;
     int nearestRepers_size=nearestRepers.size();
     std::map<int,int> finished;
-    while(!found && result.size()<300 && iter_cnt<300 && finished.size()!=nearestRepers.size()*2)
+    while(!found && result.size()<120 && iter_cnt<120 && finished.size()!=nearestRepers.size()*2)
     {
         for(size_t nearest=0; nearest<nearestRepers.size(); nearest++)
         {
@@ -523,10 +519,10 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
 
     /// use nearest element from set found from repers
     int selected=result.begin()->first;
-    double min_d=std::numeric_limits<double>::max();
+    real min_d=std::numeric_limits<double>::max();
     for(auto& z: result)
     {
-        double d=dist(pt,pts[z.first]);
+        double d=fdist(pt,pts[z.first]);
         if(d<min_d)
         {
             min_d=d;

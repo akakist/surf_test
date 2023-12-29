@@ -19,5 +19,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 HEADERS += \
     point.h \
+    real.h \
     surf.h \
     utils.h

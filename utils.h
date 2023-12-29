@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string>
 #include "point.h"
+#include "real.h"
 #include <math.h>
 struct st_malloc
 {
@@ -29,16 +30,15 @@ std::string loadFile(const std::string& name);
 std::vector<std::string> splitString(const char *seps, const std::string & src, size_t reserve);
 
 #define D2Lmul 100000
-
-inline double qw(double a)
+inline real qw(real a)
 {
     return a*a;
 }
-inline long dist(const point& a, const point&b)
-{
-    return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) * double(D2Lmul);
-}
-inline double fdist(const point& a, const point&b)
+//inline long dist(const point& a, const point&b)
+//{
+//    return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) * double(D2Lmul);
+//}
+inline real fdist(const point& a, const point&b)
 {
     return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) ;
 }
