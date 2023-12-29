@@ -17,9 +17,10 @@ struct rebro_container:public Refcountable
     rebro_container(const std::set<int>&s):points(s){}
 
 };
-struct ptsInfo
+struct pointInfo
 {
     std::deque<REF_getter<rebro_container>> rebras;
+    std::set<int> neighbours;
 };
 
 
@@ -30,14 +31,6 @@ struct surface
     }
     std::vector<point > pts;
 
-    std::vector<point> reperz;
-    struct _reperFind
-    {
-        std::vector/*reper*/<std::map<long/*dist*/,std::set<int> > > distPtsToRepers;
-        std::vector/*reper*/<std::vector/*pt*/<long/*dist*/> > distInRepersByPt;
-    };
-    _reperFind reperFind;
-    _reperFind reperFind_backup;
 
     struct _algoFind
     {
@@ -60,24 +53,32 @@ struct surface
             {
                 rebuild(pt,pts);
                 need_rebuild=false;
-//                return dists.begin()->second;
             }
-            real rdist=fdist(pt,reper);
+            real reper_dist=fdist(pt,reper);
             std::set<int> result;
-            for(auto &z: dists)
+            for(auto it=dists.begin();it!=dists.end();it++)
             {
-                if(z.first<rdist)
+                auto& newp=it->second;
+                auto& d=it->first;
+                if(d>reper_dist && result.size())
+                    break;
                 {
-                    if(drawedNeighbours4Pt[z.first].size()>refcount)
+                    if(drawedNeighbours4Pt[newp].size()>refcount)
+                    {
                         continue;
-                    if(rebro.count(z.first))
+                    }
+                    if(rebro.count(newp))
+                    {
                         continue;
-                    if(except_pts.count(z.first))
+                    }
+                    if(except_pts.count(newp))
+                    {
                         continue;
+                    }
 
-                    result.insert(z.second);
+
+                    result.insert(newp);
                 }
-                else break;
             }
             real min_d=std::numeric_limits<double>::max();
             int selected=-1;
@@ -94,6 +95,7 @@ struct surface
             if(result.size()>1000)
                 need_rebuild=true;
 
+            printf("selected %d\n",selected);
             return selected;
 
         }
@@ -102,6 +104,7 @@ struct surface
     _algoFind algoFind;
 
     std::vector/*pt*/< std::set<int/*ref pt*/> > drawedNeighbours4Pt;
+    std::vector<pointInfo> pointInfos;
 
     int found_cnt=0;
     int not_found_cnt=0;
@@ -109,9 +112,7 @@ struct surface
 
     point rebro_center(const REF_getter<rebro_container> & rebro);
 
-    std::set<int> find_1_NearestByReperz(const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
 
-    void removePointFromDistPtsToRepers(const std::set<int> &s);
     void load_points(const std::string& fn);
     void calculateReperz();
     void run(const std::string &fn, const std::string &fn_out);
