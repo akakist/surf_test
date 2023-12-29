@@ -29,41 +29,65 @@ struct surface
         }
 
         std::map<int,std::vector<int> > pt2box;
+    private:
         std::vector<std::vector<std::vector<std::set<int>>>> pts_in_box;
+    public:
+        void resize_pts_from_box()
+        {
+            pts_in_box.resize(SLICES+1);
+            for(int i=0;i<SLICES;i++)
+            {
+                pts_in_box[i].resize(SLICES+1);
+                for(int j=0;j<SLICES;j++)
+                {
+                    pts_in_box[i][j].resize(SLICES+1);
+
+                }
+            }
+
+        }
+        bool verify_box(const std::vector<int>& b)
+        {
+            if(b.size()!=3)
+                return false;
+            if(b[0]>0 && b[0]<SLICES
+                    &&b[1]>0 && b[1]<SLICES
+                    &&b[2]>0 && b[2]<SLICES
+                    )
+                return true;
+//            printf("wrong box %d %d %d\n",b[0],b[1],b[2]);
+            return false;
+        }
         std::set<int> getContentForPt(int pt, int depth)
         {
             return getContent2(pt2box[pt],depth);
         }
-        std::set<int> getContent(const std::vector<int>& center, int depth)
+
+        std::set<int>& get_pts_from_box(const std::vector<int>& c)
         {
-            std::set<int> ret;
-            for(int x=center[0]-depth;x<center[0]+depth;x++)
+            static std::set<int>empty={};
+            if(verify_box(c))
             {
-                for(int y=center[1]-depth;y<center[1]+depth;y++)
-                {
-                    for(int z=center[2]-depth;z<center[2]+depth;z++)
-                    {
-                        auto& s=pts_in_box[x][y][z];
-                        for(auto &a:s)
-                        ret.insert(a);
-                    }
-
-                }
-
+                return pts_in_box[c[0]][c[1]][c[2]];
             }
-            return ret;
+            return empty;
+
         }
         std::set<int> getContent2(const std::vector<int>& center, int depth)
         {
             std::set<int> ret;
-            for(int a:{center[0]-depth,center[0]+depth-1})
-            {
-                for(int b=center[1]-depth;b<center[1]+depth;b++)
-                {
-                    for(int c=center[2]-depth;c<center[2]+depth;c++)
-                    {
+            if(depth==0)
+                return get_pts_from_box(center);
 
-                        auto& s=pts_in_box[a][b][c];
+            for(int a:{center[0]-depth,center[0]+depth})
+            {
+                for(int b=center[1]-depth;b<=center[1]+depth;b++)
+                {
+                    for(int c=center[2]-depth;c<=center[2]+depth;c++)
+                    {
+                        if(!verify_box({a,b,c}))
+                            continue;
+                        auto& s=get_pts_from_box({a,b,c});
                         for(auto &a:s)
                         ret.insert(a);
                     }
@@ -71,14 +95,14 @@ struct surface
                 }
 
             }
-            for(int a:{center[1]-depth,center[1]+depth-1})
+            for(int a:{center[1]-depth,center[1]+depth})
             {
-                for(int b=center[0]-depth;b<center[0]+depth;b++)
+                for(int b=center[0]-depth;b<=center[0]+depth;b++)
                 {
-                    for(int c=center[2]-depth;c<center[2]+depth;c++)
+                    for(int c=center[2]-depth;c<=center[2]+depth;c++)
                     {
 
-                        auto& s=pts_in_box[b][a][c];
+                        auto& s=get_pts_from_box({b,a,c});
                         for(auto &a:s)
                         ret.insert(a);
                     }
@@ -86,14 +110,14 @@ struct surface
                 }
 
             }
-            for(int a:{center[2]-depth,center[2]+depth-1})
+            for(int a:{center[2]-depth,center[2]+depth})
             {
-                for(int b=center[0]-depth;b<center[0]+depth;b++)
+                for(int b=center[0]-depth;b<=center[0]+depth;b++)
                 {
-                    for(int c=center[1]-depth;c<center[1]+depth;c++)
+                    for(int c=center[1]-depth;c<=center[1]+depth;c++)
                     {
 
-                        auto& s=pts_in_box[b][c][a];
+                        auto& s=get_pts_from_box({b,c,a});
                         for(auto &a:s)
                         ret.insert(a);
                     }

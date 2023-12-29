@@ -78,6 +78,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     }
     while(rebraz.size())
     {
+        printf("rebraz.size() %d\n",rebraz.size());
         auto rebro=rebraz[0];
         rebraz.pop_front();
         auto p1=*rebro.begin();
@@ -241,7 +242,13 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 void surface::removePointFromDistPtsToRepers(int pt)
 {
     auto c=boxes.pt2box[pt];
-    boxes.pts_in_box[c[0]][c[1]][c[2]].erase(pt);
+    if(c.size()==3)
+    {
+        if(boxes.verify_box(c))
+        {
+            boxes.get_pts_from_box(c).erase(pt);
+        }
+    }
     boxes.pt2box.erase(pt);
 
 
@@ -274,23 +281,14 @@ void surface::calculateReperz()
 
     boxes.figure_size_delta=boxes.figure_size/(SLICES+1);
 
-    boxes.pts_in_box.resize(SLICES+1);
-    for(int i=0;i<SLICES;i++)
-    {
-        boxes.pts_in_box[i].resize(SLICES+1);
-        for(int j=0;j<SLICES;j++)
-        {
-            boxes.pts_in_box[i][j].resize(SLICES+1);
-
-        }
-    }
+    boxes.resize_pts_from_box();
     for(size_t i=0; i<pts.size(); i++)
     {
         auto&p=pts[i];
         auto ya=boxes.calcBox(p);
 
         printf("yashik %d %d %d\n",ya[0],ya[1],ya[2]);
-        boxes.pts_in_box[ya[0]][ya[1]][ya[2]].insert(i);
+            boxes.get_pts_from_box(ya).insert(i);
         boxes.pt2box[i]=ya;
     }
 
@@ -388,9 +386,11 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
 {
     std::set<int> s;
 
-    for(int depth=0;s.size()<20 && depth<20;depth++)
+    for(int depth=0;s.size()==0 && depth<20;depth++)
     {
         auto b=boxes.getContent2(boxes.calcBox(pt),depth);
+//        printf("b.size %d\n",b.size());
+//        printf("s.size %d\n",s.size());
         for(auto& z: b)
         {
             if(drawedNeighbours4Pt[z].size()!=refcount)
@@ -417,7 +417,9 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
 
     }
     std::set<int> ret;
+
     ret.insert(selected);
+//    printf("ret.size %d\n",ret.size());
     return ret;
 
 #ifdef KALL
