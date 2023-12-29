@@ -51,23 +51,27 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     rebro.insert(p1);
     auto __p2=find_1_NearestByReperz(pts[0],rebro,except,0);
     std::deque<REF_getter<rebro_container> > rebras;
-    std::deque<REF_getter<rebro_container> > rebras_copy;
+//    std::deque<REF_getter<rebro_container> > rebras_copy;
     std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
     std::set<std::set<int> > triangles;
+    std::map<int,std::set<REF_getter<rebro_container>> > ptIncludesRebras;
 
-//    std::map<std::set<int>,std::set<int>> opposite_pt_to_rebro;
     if(__p2.size())
     {
         auto p2=*__p2.begin();
-        REF_getter<rebro_container> rebro=new rebro_container({p1,p2});
+        REF_getter<rebro_container> rebro=new rebro_container({p1,p2});       
         all_rebras.insert({{p1,p2},rebro});
         rebras.push_back(rebro);
-        rebras_copy.push_back(rebro);
+//        rebras_copy.push_back(rebro);
+        ptIncludesRebras[p1].insert(rebro);
+        ptIncludesRebras[p2].insert(rebro);
     }
     while(rebras.size())
     {
         auto rebro12=rebras[0];
         rebras.pop_front();
+        if(rebro12->opposize_pts.size()==2)
+            continue;
 
         int p1=*rebro12->points.begin();
         int p2=*rebro12->points.rbegin();
@@ -99,10 +103,11 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 else {
                     rebro23= new rebro_container(s_23);
                     all_rebras.insert({s_23,rebro23});
+                    ptIncludesRebras[p2].insert(rebro23);
+                    ptIncludesRebras[p3].insert(rebro23);
                 }
             }
             rebras.push_back(rebro23);
-            rebras_copy.push_back(rebro23);
 
             {
                 auto it2=all_rebras.find(s_13);
@@ -113,18 +118,23 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 else {
                     rebro13= new rebro_container(s_13);
                     all_rebras.insert({s_13,rebro13});
+                    ptIncludesRebras[p1].insert(rebro13);
+                    ptIncludesRebras[p3].insert(rebro13);
                 }
             }
             rebras.push_back(rebro13);
-            rebras_copy.push_back(rebro13);
+//            rebras_copy.push_back(rebro13);
 
             rebro12->opposize_pts.insert(p3);
             rebro23->opposize_pts.insert(p1);
             rebro13->opposize_pts.insert(p2);
 
-//            opposite_pt_to_rebro[{p1,p2}].insert(p3);
-//            opposite_pt_to_rebro[{p2,p3}].insert(p1);
-//            opposite_pt_to_rebro[{p1,p3}].insert(p2);
+            if(rebro12->opposize_pts.size()<2)
+                rebras.push_back(rebro12);
+            if(rebro13->opposize_pts.size()<2)
+                rebras.push_back(rebro13);
+            if(rebro23->opposize_pts.size()<2)
+                rebras.push_back(rebro23);
 
             except.insert(p1);
             except.insert(p2);
@@ -147,21 +157,15 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
     }
     std::deque<std::set<int> > rebraWith_1_opposite;
-//    for(auto& z: opposite_pt_to_rebro)
-//    {
-//        if(z.second.size()<2)
-//            rebraWith_1_opposite.push_back(z.first);
-//    }
 
-
-
-    std::map<int,std::set<int/*rebro_copy_idx*/> > ptIncludesRebras;
+#ifdef KALL
     for(int i=0; i<rebras_copy.size(); i++)
     {
         auto& r=rebras_copy[i];
         ptIncludesRebras[*r.points.begin()].insert(i);
         ptIncludesRebras[*r.points.rbegin()].insert(i);
     }
+#endif
 
 //    for(auto& z:opposite_pt_to_rebro)
 //    {
@@ -181,6 +185,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     std::deque<std::set<int> > added_tri;
     /// connect points with 2 neigbours
     int matchcount=0;
+#ifdef KALL
     for(int i=0; i<drawedNeighbours4Pt.size(); i++)
     {
         if(drawedNeighbours4Pt[i].size()==2)
@@ -227,6 +232,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             }
         }
     }
+#endif
     std::cout << "matchcount " << matchcount << std::endl;
     for(auto& z:added_tri)
     {
