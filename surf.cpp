@@ -367,7 +367,7 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
     it++;
     nearestRepers.push_back(it->second);
 
-    std::set<int> resTmp;
+    std::map<int,int> resTmp;
     std::vector< std::map<long/*dist*/,std::set<int>>::iterator>itersUP;
     std::vector<std::map<long/*dist*/,std::set<int>>::iterator> itersDOWN;
     itersUP.resize(nearestRepers.size());
@@ -385,6 +385,8 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
             itersDOWN[nearest]--;
         }
     }
+    bool found=false;
+    int found_pt=-1;
 
     for(size_t nearest=0; nearest<nearestRepers.size(); nearest++)
     {
@@ -413,7 +415,12 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
             }
             for(auto& z: foundForReperUP)
             {
-                resTmp.insert(z);
+                resTmp[z]++;
+                if(resTmp[z]==nearestRepers.size())
+                {
+                    found=true;
+                    found_pt=z;
+                }
             }
         }
 
@@ -441,7 +448,13 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
             }
             for(auto& z: foundForReperDOWN)
             {
-                resTmp.insert(z);
+                resTmp[z]++;
+                if(resTmp[z]==nearestRepers.size())
+                {
+                    found=true;
+                    found_pt=z;
+                }
+
             }
         }
 
@@ -452,15 +465,15 @@ std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<in
         return ret;
 
     /// use nearest element from set found from repers
-    int selected=*resTmp.begin();
+    int selected=resTmp.begin()->first;
     double min_d=std::numeric_limits<double>::max();
     for(auto& z: resTmp)
     {
-        double d=dist(pt,pts[z]);
+        double d=dist(pt,pts[z.first]);
         if(d<min_d)
         {
             min_d=d;
-            selected=z;
+            selected=z.first;
         }
 
     }
