@@ -19,8 +19,13 @@ struct rebro_container:public Refcountable
 };
 struct pointInfo
 {
-    std::deque<REF_getter<rebro_container>> rebras;
+    std::map<std::set<int>,REF_getter<rebro_container>> rebras;
     std::set<int> neighbours;
+    void add_neighbours(const std::set<int> &s)
+    {
+        for(auto& z: s)
+            neighbours.insert(z);
+    }
 };
 
 
@@ -47,7 +52,40 @@ struct surface
                 dists.insert({fdist(p,pts[i]),i});
             }
         }
-        int findNearest(const point &pt, const std::vector<point >&pts,const std::vector/*pt*/< std::set<int/*ref pt*/> >& drawedNeighbours4Pt,const std::set<int> &rebro, const std::set<int> &except_pts, int refcount)
+        int findBrutforce(const point &pt, const std::vector<point >&pts,const std::vector<pointInfo>& pointInfos,const std::set<int> &rebro, const std::set<int> &except_pts, int refcount)
+        {
+            real min_d=std::numeric_limits<double>::max();
+            int selected=-1;
+            for(int i=0;i<pts.size();i++)
+            {
+                if(pointInfos[i].neighbours.size()>refcount)
+                {
+                    continue;
+                }
+                if(rebro.count(i))
+                {
+                    continue;
+                }
+                if(except_pts.count(i))
+                {
+                    continue;
+                }
+
+                double d=fdist(pt,pts[i]);
+
+                if(d<min_d)
+                {
+
+
+                    min_d=d;
+
+                    selected=i;
+                }
+
+            }
+            return selected;
+        }
+        int findNearest(const point &pt, const std::vector<point >&pts,const std::vector<pointInfo>& pointInfos,const std::set<int> &rebro, const std::set<int> &except_pts, int refcount)
         {
             if(need_rebuild)
             {
@@ -63,7 +101,7 @@ struct surface
                 if(d>reper_dist && result.size())
                     break;
                 {
-                    if(drawedNeighbours4Pt[newp].size()>refcount)
+                    if(pointInfos[newp].neighbours.size()>refcount)
                     {
                         continue;
                     }
@@ -103,19 +141,23 @@ struct surface
 
     _algoFind algoFind;
 
-    std::vector/*pt*/< std::set<int/*ref pt*/> > drawedNeighbours4Pt;
     std::vector<pointInfo> pointInfos;
+    std::deque<REF_getter<rebro_container> > rebras_to_process;
+    std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
+    std::set<std::set<int> > triangles;
 
-    int found_cnt=0;
-    int not_found_cnt=0;
-    int result_empty=0;
 
     point rebro_center(const REF_getter<rebro_container> & rebro);
 
 
     void load_points(const std::string& fn);
-    void calculateReperz();
     void run(const std::string &fn, const std::string &fn_out);
+    void process_rebras(int refcount, bool append_new_rebras);
+
+    int find(const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount)
+    {
+        return algoFind.findBrutforce(pt,pts,pointInfos,rebro,except_pts,refcount);
+    }
 
 };
 

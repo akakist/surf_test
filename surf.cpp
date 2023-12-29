@@ -35,47 +35,15 @@ point surface::rebro_center(const REF_getter<rebro_container> & rebro)
     p.div(rebro->points.size());
     return p;
 }
-void surface::run(const std::string &fn_in, const std::string& fn_out)
+void surface::process_rebras(int refcount, bool append_new_rebras)
 {
-    load_points(fn_in);
-    std::cout << "Calculate reperz" << std::endl;
-    calculateReperz();
-    std::cout << "done reperz" << std::endl;
-
-    std::cout << "Calculate triangles" <<std::endl;
-
-    std::deque<REF_getter<rebro_container> > rebras;
-    std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
-    std::set<std::set<int> > triangles;
-    std::map<int,std::set<REF_getter<rebro_container>> > ptIncludesRebras;
-
-    drawedNeighbours4Pt.resize(pts.size());
-    pointInfos.resize(pts.size());
-    std::set<int> except;
-    int p1=rand()%pts.size();
-    std::set<int> s1;
-    s1.insert(p1);
-    printf("p1 %d\n",p1);
-
-    REF_getter<rebro_container> rebro0=new rebro_container({p1});
-
-//    std::deque<REF_getter<rebro_container> > rebras_copy;
-
-    auto p2=algoFind.findNearest(pts[p1],pts,drawedNeighbours4Pt, rebro0->points,rebro0->opposize_pts,0);
-    printf("p2 %d\n",p2);
-    if(p2!=-1)
+    while(rebras_to_process.size())
     {
-        rebro0->points.insert(p2);
-        all_rebras.insert({{p1,p2},rebro0});
-        rebras.push_back(rebro0);
-        ptIncludesRebras[p1].insert(rebro0);
-        ptIncludesRebras[p2].insert(rebro0);
-    }
-    while(rebras.size())
-    {
-        auto rebro12=rebras[0];
-        rebras.pop_front();
-        if(rebro12->opposize_pts.size()==2)
+        if(rebras_to_process.size()%100==0)
+            printf("rebras remained %d\n",rebras_to_process.size());
+        auto rebro12=rebras_to_process[0];
+        rebras_to_process.pop_front();
+        if(rebro12->opposize_pts.size()>2)
             continue;
 
         int p1=*rebro12->points.begin();
@@ -83,14 +51,11 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
         point rc=rebro_center(rebro12);
 
-        auto p3=algoFind.findNearest(rc,pts,drawedNeighbours4Pt,rebro12->points,rebro12->opposize_pts,0);//find_1_NearestByReperz(rc,rebro12->points,rebro12->opposize_pts,0);
-        printf("p3 %d\n",p3);
+        auto p3=find(rc,rebro12->points,rebro12->opposize_pts,refcount);
+//        printf("p3 %d\n",p3);
 
 
-//        if(_p3.size())
         {
-
-//            auto p3=*_p3.begin();
             auto d=fdist(pts[p3],rc);
             if(d>101)
             {
@@ -108,9 +73,11 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 }
                 else {
                     rebro23= new rebro_container(s_23);
+
                     all_rebras.insert({s_23,rebro23});
-                    ptIncludesRebras[p2].insert(rebro23);
-                    ptIncludesRebras[p3].insert(rebro23);
+                    pointInfos[p2].rebras.insert({rebro23->points,rebro23});
+                    pointInfos[p3].rebras.insert({rebro23->points,rebro23});
+
                 }
             }
 
@@ -119,149 +86,119 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 if(it2!=all_rebras.end())
                 {
                     rebro13=it2->second;
+
                 }
                 else {
                     rebro13= new rebro_container(s_13);
                     all_rebras.insert({s_13,rebro13});
-                    ptIncludesRebras[p1].insert(rebro13);
-                    ptIncludesRebras[p3].insert(rebro13);
+                    pointInfos[p1].rebras.insert({rebro13->points,rebro13});
+                    pointInfos[p3].rebras.insert({rebro13->points,rebro13});
                 }
             }
-            rebras.push_back(rebro23);
-            rebras.push_back(rebro13);
-//            rebras_copy.push_back(rebro13);
+            if(append_new_rebras)
+            {
+            rebras_to_process.push_back(rebro23);
+            rebras_to_process.push_back(rebro13);
+            }
 
             rebro12->opposize_pts.insert(p3);
             rebro23->opposize_pts.insert(p1);
             rebro13->opposize_pts.insert(p2);
 
-//            if(rebro12->opposize_pts.size()<2)
-//                rebras.push_back(rebro12);
-//            if(rebro13->opposize_pts.size()<2)
-//                rebras.push_back(rebro13);
-//            if(rebro23->opposize_pts.size()<2)
-//                rebras.push_back(rebro23);
 
-//            except.insert(p1);
-//            except.insert(p2);
-//            except.insert(p3);
+            pointInfos[p1].add_neighbours({p2,p3});
+            pointInfos[p2].add_neighbours({p1,p3});
+            pointInfos[p3].add_neighbours({p1,p2});
 
-            drawedNeighbours4Pt[p1].insert(p2);
-            drawedNeighbours4Pt[p1].insert(p3);
-            drawedNeighbours4Pt[p2].insert(p1);
-            drawedNeighbours4Pt[p2].insert(p3);
-            drawedNeighbours4Pt[p3].insert(p1);
-            drawedNeighbours4Pt[p3].insert(p2);
-//            removePointFromDistPtsToRepers({p1,p2,p3});
+
             std::set<int> s= {p1,p2,p3};
             if(s.size()!=3)
                 throw std::runtime_error("if(s.size()!=3)##1");
             triangles.insert(s);
-            printf("triangles size %d\n",triangles.size());
-
         }
-//        else continue;
 
     }
-//    std::deque<std::set<int> > rebraWith_1_opposite;
 
-#ifdef KALL
-    for(int i=0; i<rebras_copy.size(); i++)
+}
+
+
+void surface::run(const std::string &fn_in, const std::string& fn_out)
+{
+    load_points(fn_in);
+
+    std::cout << "Calculate triangles" <<std::endl;
+
+
+
+    pointInfos.resize(pts.size());
+    std::set<int> except;
+    int p1=rand()%pts.size();
+    std::set<int> s1;
+    s1.insert(p1);
+    printf("p1 %d\n",p1);
+
+    REF_getter<rebro_container> rebro0=new rebro_container({p1});
+
+//    std::deque<REF_getter<rebro_container> > rebras_copy;
+
+    auto p2=find(pts[p1], rebro0->points,rebro0->opposize_pts,0);
+    printf("p2 %d\n",p2);
+    if(p2!=-1)
     {
-        auto& r=rebras_copy[i];
-        ptIncludesRebras[*r.points.begin()].insert(i);
-        ptIncludesRebras[*r.points.rbegin()].insert(i);
+        rebro0->points.insert(p2);
+        all_rebras.insert({{p1,p2},rebro0});
+        rebras_to_process.push_back(rebro0);
+        pointInfos[p1].rebras.insert({rebro0->points,rebro0});
+        pointInfos[p2].rebras.insert({rebro0->points,rebro0});
+        pointInfos[p1].add_neighbours({p2});
+        pointInfos[p2].add_neighbours({p1});
     }
-#endif
+    process_rebras(0,true);
+    printf("triangles %d\n",triangles.size());
+    printf("second process\n");
+    for(auto& z: all_rebras)
+    {
+        if(z.second->opposize_pts.size()<2)
+            rebras_to_process.push_back(z.second);
+    }
+    process_rebras(100,false);
+    printf("triangles %d\n",triangles.size());
 
-//    for(auto& z:opposite_pt_to_rebro)
-//    {
-//        if(z.second.size()==1)
-//        {
-//            auto rebro=z.first;
+//    std::deque<std::set<int> > rebraWith_1_opposite;
+    std::map<int,int> opps_for_rebra;
+    for(auto&z: all_rebras)
+    {
+        opps_for_rebra[z.second->opposize_pts.size()]++;
+    }
+    for(auto& z: opps_for_rebra)
+    {
+        printf("opps_for_rebra %d %d\n",z.first,z.second);
+    }
 
-////            auto p1=*rebro.begin();
-////            auto p2=*rebro.rbegin();
+    for(int i=0;i< pts.size();i++)
+    {
+        auto& p=pointInfos[i];
+        for(auto &r1: p.rebras)
+        {
+            for(auto& r2: p.rebras)
+            {
 
-////            point rc=rebro_center(rebro);
-////            auto _p3=find_1_NearestByReperz(rc,rebro,except,0);
-//        }
-//    }
+            }
+        }
+    }
+
 
 
     std::deque<std::set<int> > added_tri;
     /// connect points with 2 neigbours
     int matchcount=0;
-#ifdef KALL
-    for(int i=0; i<drawedNeighbours4Pt.size(); i++)
-    {
-        if(drawedNeighbours4Pt[i].size()==2)
-        {
-            auto& rsIdx=ptIncludesRebras[i];
 
-            for(auto& rIdx:rsIdx)
-            {
-                auto rebro=rebras_copy[rIdx];
-                int peer=get_rebro_peer(rebro.points,i);
-                auto& rs2idx=ptIncludesRebras[peer];
-                bool matched=false;
-                for(auto& r2idx:rs2idx)
-                {
-                    auto rebro2=rebras_copy[r2idx];
-                    int peer2=get_rebro_peer(rebro2.points,peer);
-                    if(peer2==i)
-                    {
-                        matched=true;
-                        matchcount++;
-                    }
-                }
-                if(matched)
-                {
-                    for(auto& r2idx:rs2idx)
-                    {
-                        auto rebro2=rebras_copy[r2idx];
-                        int peer2=get_rebro_peer(rebro2.points,peer);
-                        if(peer2==i)
-                            continue;
-                        if(drawedNeighbours4Pt[peer2].size()==2)
-                        {
-                            std::set<int> s= {i,peer,peer2};
-                            if(s.size()!=3)
-                                throw std::runtime_error("if(s.size()!=3)##1");
-                            triangles.insert(s);
-                            added_tri.push_back(s);
-
-                        }
-                    }
-
-                }
-
-            }
-        }
-    }
-#endif
-    std::cout << "matchcount " << matchcount << std::endl;
-    for(auto& z:added_tri)
-    {
-        auto s=z;
-        std::vector<int>v;
-        while(s.size())
-        {
-            v.push_back(*s.begin());
-            s.erase(s.begin());
-        }
-        if(v.size()!=3)
-            throw std::runtime_error("if(v.size()!=3)");
-        drawedNeighbours4Pt[v[0]].insert(v[1]);
-        drawedNeighbours4Pt[v[0]].insert(v[2]);
-        drawedNeighbours4Pt[v[1]].insert(v[2]);
-    }
 
 
     std::map<int,int> cnt;
-    for(auto & z: drawedNeighbours4Pt)
+    for(auto & z: pointInfos)
     {
-        cnt[z.size()]++;
+        cnt[z.neighbours.size()]++;
     }
     for(auto &z: cnt)
     {
@@ -292,37 +229,9 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
         idx++;
     }
     std::cout << "Print done" << std::endl;
-    std::cout << "found cnt " << found_cnt << std::endl;
-    std::cout << "not found cnt " << not_found_cnt << std::endl;
-    std::cout << "result_empty " << result_empty << std::endl;
 
 }
 
-void surface::calculateReperz()
-{
-    point min=pts[0];
-    point max=pts[0];
-
-    point avg;
-    for(size_t i=0; i<pts.size(); i++)
-    {
-        auto & p=pts[i];
-//        avg.add(+=pts[i];
-        if(p.x>max.x) max.x=p.x;
-        if(p.y>max.y) max.y=p.y;
-        if(p.z>max.z) max.z=p.z;
-
-        if(p.x<min.x) min.x=p.x;
-        if(p.y<min.y) min.y=p.y;
-        if(p.z<min.z) min.z=p.z;
-
-    }
-
-    point d=max;
-    d.sub(min);
-    real N=2;
-
-}
 void surface::load_points(const std::string& fn)
 {
     auto b=loadFile(fn);
