@@ -273,20 +273,35 @@ void surface::calculateReperz()
     avg/=double(pts.size());
 
     point d=max-min;
-    d+=d+d;
+//    d+=d+d;
 
-    int step=1;
-    for(int ix=-1; ix<2; ix+=step)
+//    int step=1;
+    double N=3;
+    for(double x=min.x;x<max.x+1;x+=d.x/N)
     {
-        for(int iy=-1; iy<2; iy+=step)
+        for(double y=min.y;y<max.y+1;y+=d.y/N)
         {
-            for(int iz=-1; iz<2; iz+=step)
+            for(double z=min.z;z<max.z+1;z+=d.z/N)
             {
-                reperz.push_back(avg+point(d.x*(double)ix,d.y*(double)iy,d.z*(double)iz));
+                reperz.push_back(point(x,y,z));
             }
 
         }
+
     }
+//    std::vector<double> v{-1,0,1};
+
+//    for(double ix:v)
+//    {
+//        for(double iy:v)
+//        {
+//            for(double iz:v)
+//            {
+//                reperz.push_back(avg+point(d.x*ix,d.y*iy,d.z*iz));
+//            }
+
+//        }
+//    }
     std::cout << "total reperz count " << reperz.size() << std::endl;
 
     reperFind.distPtsToRepers.resize(reperz.size());
@@ -334,40 +349,102 @@ void surface::load_points(const std::string& fn)
 std::set<int> surface::find_1_NearestByReperz(const point &pt, const std::set<int>& rebro,const std::set<int> &except_pts, int refcount)
 {
     //// calculate dist to each reper
-    std::vector<long> distByReper;
-    distByReper.reserve(pts.size());
-    for(auto& z: reperz)
+    std::map<long,int> _distByReperMap;
+    std::vector<long> _distByReperV;
+    _distByReperV.resize(reperz.size());
+    for(int i=0;i<reperz.size();i++)
     {
-        distByReper.push_back(dist(pt,z));
+        auto d=dist(pt,reperz[i]);
+        _distByReperMap[d]=i;
+        _distByReperV[i]=d;
+
     }
+    std::vector<int> nearestRepers; /// index of reper
+    auto it=_distByReperMap.begin();
+    nearestRepers.push_back(it->second);
+    it++;
+    nearestRepers.push_back(it->second);
+    it++;
+    nearestRepers.push_back(it->second);
+
     std::set<int> resTmp;
-    for(size_t i=0; i<distByReper.size(); i++)
+    std::vector< std::map<long/*dist*/,std::set<int>>::iterator>itersUP;
+    std::vector<std::map<long/*dist*/,std::set<int>>::iterator> itersDOWN;
+    itersUP.resize(nearestRepers.size());
+    itersDOWN.resize(nearestRepers.size());
+    std::vector<std::map<long/*dist*/,std::set<int> >*> distsToRepers;
+    distsToRepers.resize(nearestRepers.size());
+    for(size_t nearest=0; nearest<nearestRepers.size(); nearest++)
+    {
+        int reperIdx=nearestRepers[nearest];
+        distsToRepers[nearest]=&reperFind.distPtsToRepers[reperIdx];
+        itersUP[nearest]=distsToRepers[nearest]->upper_bound(_distByReperV[reperIdx]);
+        itersDOWN[nearest]=itersUP[nearest];
+        if(itersDOWN[nearest]!=distsToRepers[nearest]->begin())
+        {
+            itersDOWN[nearest]--;
+        }
+    }
+
+    for(size_t nearest=0; nearest<nearestRepers.size(); nearest++)
     {
 #define nPTS 30
-        /// find nearest upper_bound element in each reper
-        /// exclude found neighbours
-        std::vector<int> foundForReper;
-        foundForReper.reserve(nPTS);
-        auto it=reperFind.distPtsToRepers[i].upper_bound(distByReper[i]);
-        while(foundForReper.size()<nPTS && it!=reperFind.distPtsToRepers[i].end())
+//        int reperIdx=nearestRepers[nearest];
+        auto distsToReper=distsToRepers[nearest];
+//        itDOWN++;
+
         {
-            for(auto &z:it->second)
+            std::set<int> foundForReperUP;
+
+            while(foundForReperUP.size()<nPTS && itersUP[nearest]!=distsToReper->end())
             {
-                if(drawedNeighbours4Pt[z].size()!=refcount)
-                    continue;
-                if(rebro.count(z))
-                    continue;
-                if(!except_pts.count(z))
+                for(auto &z:itersUP[nearest]->second)
                 {
-                    foundForReper.push_back(z);
+                    if(drawedNeighbours4Pt[z].size()!=refcount)
+                        continue;
+                    if(rebro.count(z))
+                        continue;
+                    if(!except_pts.count(z))
+                    {
+                        foundForReperUP.insert(z);
+                    }
                 }
+                itersUP[nearest]++;
             }
-            it++;
+            for(auto& z: foundForReperUP)
+            {
+                resTmp.insert(z);
+            }
         }
-        for(auto& z: foundForReper)
+
         {
-            resTmp.insert(z);
+//            auto itDOWN=distsToReper.upper_bound(_distByReperV[reperIdx]);
+            std::set<int> foundForReperDOWN;
+            while(foundForReperDOWN.size()<nPTS)
+            {
+                for(auto &z:itersDOWN[nearest]->second)
+                {
+                    if(drawedNeighbours4Pt[z].size()!=refcount)
+                        continue;
+                    if(rebro.count(z))
+                        continue;
+                    if(!except_pts.count(z))
+                    {
+                        foundForReperDOWN.insert(z);
+                    }
+                }
+                if(itersDOWN[nearest]!=distsToReper->begin())
+                {
+                    itersDOWN[nearest]--;
+                }
+                else break;
+            }
+            for(auto& z: foundForReperDOWN)
+            {
+                resTmp.insert(z);
+            }
         }
+
 
     }
     std::set<int> ret;
