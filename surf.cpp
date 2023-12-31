@@ -61,7 +61,6 @@ std::set<int> surface::get_rebro_neighbours(const REF_getter<rebro_container>&r)
 }
 void surface::process_point( int p1)
 {
-    printf("process point\n");
     pointInfo &pi1=pointInfos[p1];
     auto border_rebras1=pi1.border_rebras_get();
     if(border_rebras1.size()!=2)
@@ -103,7 +102,6 @@ void surface::process_point( int p1)
     rebro12->add_opposite_pts(p3);
     rebro13->add_opposite_pts(p2);
     rebro23->add_opposite_pts(p1);
-    printf("add rebro to process\n");
     border_rebras_to_process.push_back(rebro23);
     triangles.insert({p1,p2,p3});
 
@@ -111,7 +109,6 @@ void surface::process_point( int p1)
 
 void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& rebro12)
 {
-    printf("find_and_add_point_to_rebro\n");
     {
         int p1=*rebro12->points.begin();
         int p2=*rebro12->points.rbegin();
@@ -122,7 +119,6 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
         auto p3=find( rc, {}, {},0);
         if(p3==-1)
         {
-            printf("p3 -1 \n");
             rebro12->add_opposite_pts(-1);
             return;
         }
@@ -159,8 +155,6 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
             {
                 if(r->opposize_pts.size()<2)
                 {
-                    printf("add rebro to process\n");
-
                     border_rebras_to_process.push_back(r);
                 }
             }
@@ -186,23 +180,16 @@ ABLE surface::can_find_and_add_new(int pt)
     }
     if(border_rebras1.size()!=2)
     {
-//        throw std::runtime_error("if(pi.border_rebras.size()!=2) "+std::to_string(border_rebras1.size()));
         return ABLE_FIND_AND_ADD;
     }
-//    printf("(*border_rebras1.begin())->opposize_pts.size() %d\n",(*border_rebras1.begin())->opposize_pts.size());
-//    printf("(*border_rebras1.rbegin())->opposize_pts.size() %d\n",(*border_rebras1.rbegin())->opposize_pts.size());
     if((*border_rebras1.begin())->opposize_pts.size()!=1)
     {
-        printf("return ABLE_SKIP; %d",__LINE__);
         return ABLE_SKIP;
     }
-//            throw std::runtime_error("if(pi.border_rebras.begin()->second->opposize_pts.size()!=1) "+std::to_string(pi.border_rebras.begin()->second->opposize_pts.size()));
     if((*border_rebras1.rbegin())->opposize_pts.size()!=1)
     {
-        printf("return ABLE_SKIP; %d",__LINE__);
         return ABLE_SKIP;
     }
-//            throw std::runtime_error("if(pi.border_rebras.rbegin()->second->opposize_pts.size()!=1) "+std::to_string(pi.border_rebras.rbegin()->second->opposize_pts.size()));
 
     int p1=pt;
     int p2=get_rebro_peer(*border_rebras1.begin(),p1);
@@ -222,11 +209,7 @@ ABLE surface::can_find_and_add_new(int pt)
     auto angl=  Angle::angle(v2-v0,o-v0)+
                 Angle::angle(v3-v0,o-v0);
 
-    printf("angl  %lf\n",angl);
 
-//    point sum23=((v2-v0)+(v3-v0));
-//    point sumop12=((pts[op1]-v1)+(pts[op2]-v1));
-//    auto angle=Angle::angle(sum23,sumop12);
 
     if(std::isnan(angl))
         return ABLE::ABLE_FIND_AND_ADD;
@@ -237,10 +220,9 @@ ABLE surface::can_find_and_add_new(int pt)
     }
     else
     {
+        // wognutost
         auto an=Angle::angle((v2-v0),(v3-v0));
         if(an<90)
-//            process_point(p1);
-        // wognutost
         return ABLE::ABLE_CONNECT_NEIGHBOUR;
 
     }
@@ -295,7 +277,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
             pointInfo & _pi3=pointInfos[p3];
 
-//            printf("4 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
 
             _pi1.add_neighbours({p2,p3});
             _pi2.add_neighbours({p1,p3});
@@ -315,8 +296,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                         rebro13,rebro23,rebro12
                     })
             {
-                printf("add rebro to process\n");
-
                 border_rebras_to_process.push_back(r);
             }
 
@@ -344,15 +323,12 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             int p2=rebro->right();
             auto a1=can_find_and_add_new(p1);
             auto a2=can_find_and_add_new(p2);
-            printf("a1 %d a2 %d\n",a1,a2);
             if(a1==ABLE_SKIP)
             {
-                printf("ABLE_SKIP ; %s\n", (_FL_).c_str());
                 continue;
             }
             if(a2==ABLE_SKIP)
             {
-                printf("ABLE_SKIP ; %s\n",(_FL_).c_str());
                 continue;
             }
             if(a1==ABLE_CONNECT_NEIGHBOUR)
@@ -367,28 +343,14 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             }
 
 
-//            if(a1==ABLE_FIND_AND_ADD && a2==ABLE_FIND_AND_ADD)
             {
                 find_and_add_point_to_rebro(rebro);
             }
-//            else
-//            {
 
-//                //// add existing point
-//                if(a1==ABLE_CONNECT_NEIGHBOUR)
-//                {
-//                    process_point(p1);
-//                }
-//                else if(a2==ABLE_CONNECT_NEIGHBOUR)
-//                {
-//                    process_point(p2);
-//                }
-//            }
 
         }
     }
 
-//    process_rebras(searchSet,0,true);
 
     printf("triangles %d\n",triangles.size());
 
