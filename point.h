@@ -30,21 +30,21 @@ struct point
         return *this;
     }
     point &operator/=(double c)
-      {
-          x/=c;
-          y/=c;
-          z/=c;
-          return *this;
-      }
-      point &operator+=(const point &p) {
-          x+=p.x;
-          y+=p.y;
-          z+=p.z;
-          return *this;
-      }
+    {
+        x/=c;
+        y/=c;
+        z/=c;
+        return *this;
+    }
+    point &operator+=(const point &p) {
+        x+=p.x;
+        y+=p.y;
+        z+=p.z;
+        return *this;
+    }
     friend  inline const point operator+(const point &, const point &);
-     friend  inline const point operator-(const point &, const point &);
-     friend  inline const point operator/(const point &, double);
+    friend  inline const point operator-(const point &, const point &);
+    friend  inline const point operator/(const point &, double);
 
 };
 inline const point operator+(const point &p1, const point &p2)

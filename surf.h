@@ -7,12 +7,14 @@
 #include "REF.h"
 #include "utils.h"
 #include <deque>
+#include <string.h>
 //struct point_p;
 enum ABLE {
-    ABLE_FIND_AND_ADD,
-    ABLE_CONNECT_NEIGHBOUR,
-    ABLE_SKIP
+    ABLE_FIND_AND_ADD=1,
+    ABLE_CONNECT_NEIGHBOUR=2,
+    ABLE_SKIP=3
 };
+#define _FL_ (std::string)" "+  __FILE__ +" "+std::to_string(__LINE__)
 
 struct rebro_container:public Refcountable
 {
@@ -24,27 +26,26 @@ struct rebro_container:public Refcountable
         opposize_pts.insert(p);
         if(opposize_pts.size()>2)
         {
-            throw std::runtime_error("if(opposize_pts.size()>2)");
+            throw std::runtime_error("if(opposize_pts.size()>2)" + _FL_.c_str());
         }
     }
     int left()
     {
         if(points.size()!=2)
-            throw std::runtime_error("if(points.size()!=2)");
+            throw std::runtime_error("if(points.size()!=2)"+ _FL_.c_str());
         return *points.begin();
     }
     int right()
     {
         if(points.size()!=2)
-            throw std::runtime_error("if(points.size()!=2)");
+            throw std::runtime_error("if(points.size()!=2)"+ _FL_.c_str());
         return *points.rbegin();
     }
-    rebro_container(){}
-    rebro_container(const std::set<int>&s, const char* comm):points(s), comment(comm){
+    rebro_container() {}
+    rebro_container(const std::set<int>&s, const char* comm):points(s), comment(comm) {
         if(s.size()!=2)
             throw std::runtime_error("if(s.size()!=2)");
     }
-
 
 };
 struct pointInfo
@@ -55,35 +56,27 @@ struct pointInfo
 
     std::set<REF_getter<rebro_container>> border_rebras_get()
     {
-      std::set<REF_getter<rebro_container>> ret;
-      for(auto& r:rebras)
-      {
-          if(r.second->opposize_pts.size()==1)
-          {
-              ret.insert(r.second);
-          }
-      }
-      return ret;
+        std::set<REF_getter<rebro_container>> ret;
+        for(auto& r:rebras)
+        {
+            if(r.second->opposize_pts.size()==1)
+            {
+                ret.insert(r.second);
+            }
+        }
+        return ret;
 
     }
     void add_to_rebras(const REF_getter<rebro_container>& r)
     {
         rebras.insert({r->points,r});
     }
-//    void add_to_border_rebras(const REF_getter<rebro_container>& r)
-//    {
-
-//        border_rebras.insert({r->points,r});
-//        if(border_rebras.size()>2)
-//            throw std::runtime_error("if(border_rebras.size()>2) "+std::to_string(border_rebras.size()));
-//    }
     void add_neighbours(const std::set<int> &s)
     {
         for(auto& z: s)
             neighbours.insert(z);
     }
 };
-
 
 struct surface
 {
@@ -92,17 +85,16 @@ struct surface
     }
     std::vector<point > pts;
 
-
     struct _algoFind
     {
-        _algoFind():need_rebuild(true){}
+        _algoFind():need_rebuild(true) {}
         std::multimap<real,int> dists;
         point reper;
         bool need_rebuild;
     };
     int algoFind__findBrutforce(const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
     int algoFind__findNearest(const point &pt,
-                    const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
+                              const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
     void algoFind__rebuild(const point &p, const std::vector<point >&pts, const std::set<int> &searchSet);
 
     _algoFind algoFind;
@@ -119,9 +111,7 @@ struct surface
     point rebro_center(const REF_getter<rebro_container> & rebro);
     int get_rebro_peer(const REF_getter<rebro_container> &rebro, int n);
 
-
     std::set<int> get_rebro_neighbours(const REF_getter<rebro_container>&r);
-
 
     void load_points(const std::string& fn);
     void run(const std::string &fn, const std::string &fn_out);
@@ -134,32 +124,11 @@ struct surface
     REF_getter<rebro_container> getRebroOrCreate(const std::set<int>& s, const char* comment);
     void process_point(int p1);
 
-
     void find_and_add_point_to_rebro(const REF_getter<rebro_container>& rebro12);
-
-
 
     void calc_figure_size();
     ABLE can_find_and_add_new(int pt);
 
-    std::set<int> get_rebro_pts(const REF_getter<rebro_container>&r)
-    {
-        std::set<int> s;
-        for(auto& p:r->points)
-        {
-            s.insert(p);
-            pointInfo &pi=pointInfos[p];
-            for(auto& n:pi.neighbours)
-            {
-                s.insert(n);
-            }
-        }
-        for(auto& o:r->opposize_pts)
-        {
-            s.insert(o);
-        }
-        return s;
-    }
 
 };
 
