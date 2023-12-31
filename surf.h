@@ -129,7 +129,6 @@ struct surface
     void calc_figure_size();
     ABLE can_find_and_add_new(int pt);
 
-
 };
 
 #endif // SURF_H

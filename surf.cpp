@@ -132,11 +132,9 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
 
             pointInfo & pi3=pointInfos[p3];
 
-
             pi1.add_neighbours({p2,p3});
             pi2.add_neighbours({p1,p3});
             pi3.add_neighbours({p1,p2});
-
 
             rebro23->add_opposite_pts(p1);
             rebro13->add_opposite_pts(p2);
@@ -158,7 +156,6 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
                     border_rebras_to_process.push_back(r);
                 }
             }
-
 
             std::set<int> s= {p1,p2,p3};
             if(s.size()!=3)
@@ -209,8 +206,6 @@ ABLE surface::can_find_and_add_new(int pt)
     auto angl=  Angle::angle(v2-v0,o-v0)+
                 Angle::angle(v3-v0,o-v0);
 
-
-
     if(std::isnan(angl))
         return ABLE::ABLE_FIND_AND_ADD;
     if(angl<180)
@@ -223,7 +218,7 @@ ABLE surface::can_find_and_add_new(int pt)
         // wognutost
         auto an=Angle::angle((v2-v0),(v3-v0));
         if(an<90)
-        return ABLE::ABLE_CONNECT_NEIGHBOUR;
+            return ABLE::ABLE_CONNECT_NEIGHBOUR;
 
     }
     return ABLE_FIND_AND_ADD;
@@ -276,7 +271,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
             REF_getter<rebro_container> rebro13(getRebroOrCreate(s_13,"process rebras"));
 
             pointInfo & _pi3=pointInfos[p3];
-
 
             _pi1.add_neighbours({p2,p3});
             _pi2.add_neighbours({p1,p3});
@@ -342,15 +336,12 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                 continue;
             }
 
-
             {
                 find_and_add_point_to_rebro(rebro);
             }
 
-
         }
     }
-
 
     printf("triangles %d\n",triangles.size());
 
