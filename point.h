@@ -29,8 +29,36 @@ struct point
         z-=p.z;
         return *this;
     }
+    point &operator/=(double c)
+      {
+          x/=c;
+          y/=c;
+          z/=c;
+          return *this;
+      }
+      point &operator+=(const point &p) {
+          x+=p.x;
+          y+=p.y;
+          z+=p.z;
+          return *this;
+      }
+    friend  inline const point operator+(const point &, const point &);
+     friend  inline const point operator-(const point &, const point &);
+     friend  inline const point operator/(const point &, double);
 
 };
+inline const point operator+(const point &p1, const point &p2)
+{
+    return point(p1.x+p2.x, p1.y+p2.y,p1.z+p2.z);
+}
+inline const point operator-(const point &p1, const point &p2)
+{
+    return point(p1.x-p2.x, p1.y-p2.y,p1.z-p2.z);
+}
+inline const point operator/(const point &p,double c)
+{
+    return point(p.x/c, p.y/c, p.z/c);
+}
 namespace Angle
 {
     inline real dot(const point& a, const point& b)  //calculates dot product of a and b
@@ -42,9 +70,9 @@ namespace Angle
     {
         return std::sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
     }
-    inline real angle(const point& v1,const point& v2)
+    inline real angle(const point& v1,const point& v2) // grads
     {
-        return std::acos(dot(v1,v2)/(mag(v1)*mag(v2)));
+        return std::acos(dot(v1,v2)/(mag(v1)*mag(v2)))*(180/M_PI);
     }
 }
 
