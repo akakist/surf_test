@@ -23,7 +23,9 @@ struct rebro_container:public Refcountable
     {
         opposize_pts.insert(p);
         if(opposize_pts.size()>2)
+        {
             throw std::runtime_error("if(opposize_pts.size()>2)");
+        }
     }
     int left()
     {
@@ -48,34 +50,33 @@ struct rebro_container:public Refcountable
 struct pointInfo
 {
     std::map<std::set<int>,REF_getter<rebro_container>> rebras;
-    std::map<std::set<int>,REF_getter<rebro_container>> border_rebras;
 
     std::set<int> neighbours;
 
-    std::vector<REF_getter<rebro_container>> border_rebras_get()
+    std::set<REF_getter<rebro_container>> border_rebras_get()
     {
-      std::vector<REF_getter<rebro_container>> ret;
+      std::set<REF_getter<rebro_container>> ret;
       for(auto& r:rebras)
       {
           if(r.second->opposize_pts.size()==1)
           {
-              ret.push_back(r.second);
+              ret.insert(r.second);
           }
-          return ret;
       }
+      return ret;
 
     }
     void add_to_rebras(const REF_getter<rebro_container>& r)
     {
         rebras.insert({r->points,r});
     }
-    void add_to_border_rebras(const REF_getter<rebro_container>& r)
-    {
+//    void add_to_border_rebras(const REF_getter<rebro_container>& r)
+//    {
 
-        border_rebras.insert({r->points,r});
-        if(border_rebras.size()>2)
-            throw std::runtime_error("if(border_rebras.size()>2) "+std::to_string(border_rebras.size()));
-    }
+//        border_rebras.insert({r->points,r});
+//        if(border_rebras.size()>2)
+//            throw std::runtime_error("if(border_rebras.size()>2) "+std::to_string(border_rebras.size()));
+//    }
     void add_neighbours(const std::set<int> &s)
     {
         for(auto& z: s)
@@ -113,9 +114,11 @@ struct surface
     std::set<int> searchSet;
     real figure_size;
 
-    std::deque<REF_getter<rebro_container>> border_rebras;
+    std::deque<REF_getter<rebro_container>> border_rebras_to_process;
 
     point rebro_center(const REF_getter<rebro_container> & rebro);
+    int get_rebro_peer(const REF_getter<rebro_container> &rebro, int n);
+
 
     std::set<int> get_rebro_neighbours(const REF_getter<rebro_container>&r);
 

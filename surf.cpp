@@ -14,13 +14,14 @@ std::string dump_rebro(const std::set<int>& rebro)
     return out;
 
 }
-int get_rebro_peer(const std::set<int>& rebro,int n)
+int surface::get_rebro_peer(const REF_getter<rebro_container>& rebro,int n)
 {
-    if(rebro.size()!=2)
+
+    if(rebro->points.size()!=2)
         throw std::runtime_error("if(rebro.size()!=2)");
-    if(!rebro.count(n))
+    if(!rebro->points.count(n))
         throw std::runtime_error("if(!rebro.count(n))");
-    for(auto& z:rebro)
+    for(auto& z:rebro->points)
     {
         if(z!=n)
             return z;
@@ -58,21 +59,35 @@ void surface::process_point( int p1)
 {
 
     pointInfo &pi1=pointInfos[p1];
-    if(pi1.border_rebras.size()!=2)
-        throw std::runtime_error("if(pi1.border_rebras.size()!=2) "+std::to_string(pi1.border_rebras.size()));
+    auto border_rebras1=pi1.border_rebras_get();
+    if(border_rebras1.size()!=2)
+        throw std::runtime_error("if(pi1.border_rebras.size()!=2) "+std::to_string(border_rebras_to_process.size()));
 
-    auto rebro12=pi1.border_rebras.begin()->second;
-    auto rebro13=pi1.border_rebras.rbegin()->second;
+    auto rebro12=*border_rebras1.begin();
+    auto rebro13=*border_rebras1.rbegin();
+
     if(rebro12->opposize_pts.size()==2)
         return;
     if(rebro13->opposize_pts.size()==2)
         return;
-    auto p2=get_rebro_peer(rebro12->points,p1);
-    auto p3=get_rebro_peer(rebro13->points,p1);
 
-//    pi1.border_rebras.clear();
+    if(rebro12->opposize_pts.size()==2)
+    {
+        throw std::runtime_error((std::string)"KALL "+__FILE__+" "+std::to_string(__LINE__));
+    }
+    if(rebro13->opposize_pts.size()==2)
+    {
+        throw std::runtime_error((std::string)"KALL "+__FILE__+" "+std::to_string(__LINE__));
+//        return;
+    }
+    auto p2=get_rebro_peer(rebro12,p1);
+    auto p3=get_rebro_peer(rebro13,p1);
+
 
     auto rebro23=getRebroOrCreate({p2,p3},"connect triangle");
+    if(rebro23->opposize_pts.size()==2)
+        return;
+
 
     pointInfo &pi2=pointInfos[p2];
     pointInfo &pi3=pointInfos[p3];
@@ -83,22 +98,11 @@ void surface::process_point( int p1)
     pi2.add_to_rebras(rebro23);
     pi3.add_to_rebras(rebro23);
 
-    pi2.border_rebras.erase(rebro12->points);
-    pi3.border_rebras.erase(rebro13->points);
-
-
-    pi2.add_to_border_rebras(rebro23);
-
-    pi3.add_to_border_rebras(rebro23);
-
-    printf("KALL %s %d\n",__FILE__,__LINE__);
 
     rebro12->add_opposite_pts(p3);
-    printf("KALL %s %d\n",__FILE__,__LINE__);
     rebro13->add_opposite_pts(p2);
-    printf("KALL %s %d\n",__FILE__,__LINE__);
     rebro23->add_opposite_pts(p1);
-    border_rebras.push_back(rebro23);
+    border_rebras_to_process.push_back(rebro23);
     triangles.insert({p1,p2,p3});
 
 }
@@ -112,50 +116,45 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
         pointInfo & pi1=pointInfos[p1];
         pointInfo & pi2=pointInfos[p2];
 
-        printf("1 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
-        if(rebro12->opposize_pts.size()>1)
-            throw std::runtime_error("if(rebro12->opposize_pts.size()>1)");
 
         point rc=rebro_center(rebro12);
         auto p3=find( rc,{},{},0);
         if(p3==-1)
         {
             printf("p3 -1 \n");
-            printf("KALL %s %d\n",__FILE__,__LINE__);
             rebro12->add_opposite_pts(-1);
             return;
         }
-        printf("2 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
         searchSet.erase(p3);
         {
             std::set<int> s_23({p2,p3});
             std::set<int> s_13({p1,p3});
 
             REF_getter<rebro_container> rebro23(getRebroOrCreate(s_23,"process rebras"));
-            if(rebro23->opposize_pts.size()>1)
-                throw std::runtime_error("if(rebro23->opposize_pts.size()>1)");
+//            if(rebro23->opposize_pts.size()>1)
+//                throw std::runtime_error("if(rebro23->opposize_pts.size()>1)");
 
-            printf("3 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
+//            printf("3 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
 
             REF_getter<rebro_container> rebro13(getRebroOrCreate(s_13,"process rebras"));
-            if(rebro13->opposize_pts.size()>1)
-                throw std::runtime_error("if(rebro23->opposize_pts.size()>1)");
+//            if(rebro13->opposize_pts.size()>1)
+//                throw std::runtime_error("if(rebro23->opposize_pts.size()>1)");
 
             pointInfo & pi3=pointInfos[p3];
 
-            printf("4 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
+//            printf("4 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
 
             pi1.add_neighbours({p2,p3});
             pi2.add_neighbours({p1,p3});
             pi3.add_neighbours({p1,p2});
 
-            printf("5 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
+//            printf("5 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
 
-            printf("KALL %s %d\n",__FILE__,__LINE__);
+//            printf("KALL %s %d\n",__FILE__,__LINE__);
             rebro23->add_opposite_pts(p1);
-            printf("KALL %s %d\n",__FILE__,__LINE__);
+//            printf("KALL %s %d\n",__FILE__,__LINE__);
             rebro13->add_opposite_pts(p2);
-            printf("KALL %s %d\n",__FILE__,__LINE__);
+//            printf("KALL %s %d\n",__FILE__,__LINE__);
             rebro12->add_opposite_pts(p3);
 
             pi1.add_to_rebras(rebro13);
@@ -167,28 +166,30 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
 
             /// global border_rebras
 
-            for(auto& r:{rebro13,rebro23})
+
+            for(auto& r:{rebro13,rebro23,rebro12})
             {
-                border_rebras.push_back(r);
+                if(r->opposize_pts.size()<2)
+                    border_rebras_to_process.push_back(r);
             }
 
             ////
             ///
-            if(rebro12->opposize_pts.size()==2)
-            {
-                pi1.border_rebras.erase(rebro12->points);
-                pi2.border_rebras.erase(rebro12->points);
-            }
+//            if(rebro12->opposize_pts.size()==2)
+//            {
+//                pi1.border_rebras.erase(rebro12->points);
+//                pi2.border_rebras.erase(rebro12->points);
+//            }
 
 
-            pi1.add_to_border_rebras(rebro13);
+//            pi1.add_to_border_rebras(rebro13);
 
-            pi2.add_to_border_rebras(rebro23);
+//            pi2.add_to_border_rebras(rebro23);
 
 
-            pi3.add_to_border_rebras(rebro13);
+//            pi3.add_to_border_rebras(rebro13);
 
-            pi3.add_to_border_rebras(rebro23);
+//            pi3.add_to_border_rebras(rebro23);
 
             std::set<int> s= {p1,p2,p3};
             if(s.size()!=3)
@@ -202,31 +203,37 @@ void surface::find_and_add_point_to_rebro(const REF_getter<rebro_container>& reb
 ABLE surface::can_find_and_add_new(int pt)
 {
         pointInfo pi=pointInfos[pt];
-        if(pi.border_rebras.size()!=2)
+        auto border_rebras1=pi.border_rebras_get();
+        if(border_rebras1.size()==1)
+        {
+            /// initial case
+            return ABLE::ABLE_FIND_AND_ADD;
+        }
+        if(border_rebras1.size()!=2)
         {
             return ABLE_SKIP;
-            throw std::runtime_error("if(pi.border_rebras.size()!=2) "+std::to_string(pi.border_rebras.size()));
+            throw std::runtime_error("if(pi.border_rebras.size()!=2) "+std::to_string(border_rebras1.size()));
         }
-        if(pi.border_rebras.begin()->second->opposize_pts.size()!=1)
+        if((*border_rebras1.begin())->opposize_pts.size()!=1)
         {
             return ABLE_SKIP;
         }
 //            throw std::runtime_error("if(pi.border_rebras.begin()->second->opposize_pts.size()!=1) "+std::to_string(pi.border_rebras.begin()->second->opposize_pts.size()));
-        if(pi.border_rebras.rbegin()->second->opposize_pts.size()!=1)
+        if((*border_rebras1.rbegin())->opposize_pts.size()!=1)
         {
             return ABLE_SKIP;
         }
 //            throw std::runtime_error("if(pi.border_rebras.rbegin()->second->opposize_pts.size()!=1) "+std::to_string(pi.border_rebras.rbegin()->second->opposize_pts.size()));
 
         int p1=pt;
-        int p2=get_rebro_peer(pi.border_rebras.begin()->second->points,p1);
-        int p3=get_rebro_peer(pi.border_rebras.rbegin()->second->points,p1);
+        int p2=get_rebro_peer(*border_rebras1.begin(),p1);
+        int p3=get_rebro_peer(*border_rebras1.rbegin(),p1);
         point v1=pts[p1];
         point v2=pts[p2];
         point v3=pts[p3];
         point sum23=((v2-v1)+(v3-v1));
-        int op1=*pi.border_rebras.begin()->second->opposize_pts.begin();
-        int op2=*pi.border_rebras.rbegin()->second->opposize_pts.begin();
+        int op1=*(*border_rebras1.begin())->opposize_pts.begin();
+        int op2=*(*border_rebras1.rbegin())->opposize_pts.begin();
         point sumop12=((pts[op1]-v1)+(pts[op2]-v1));
         auto angle=Angle::angle(sum23,sumop12);
         if(angle<60)
@@ -273,35 +280,71 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     if(p2!=-1)
     {
         searchSet.erase(p2);
-        REF_getter<rebro_container> rebro0=new rebro_container({p1,p2},"first rebro");
-        all_rebras.insert({{p1,p2},rebro0});
-        border_rebras.push_back(rebro0);
+        REF_getter<rebro_container> rebro12=new rebro_container({p1,p2},"first rebro");
+        all_rebras.insert({{p1,p2},rebro12});
         pointInfo& _pi2=pointInfos[p2];
-        _pi1.add_to_rebras(rebro0);
-        _pi2.add_to_rebras(rebro0);
+        _pi1.add_to_rebras(rebro12);
+        _pi2.add_to_rebras(rebro12);
 
-        _pi1.add_to_border_rebras(rebro0);
-
-        _pi2.add_to_border_rebras(rebro0);
         _pi1.add_neighbours({p2});
         _pi1.add_neighbours({p1});
-
-        find_and_add_point_to_rebro(rebro0);
-
-        if(border_rebras.size()==0)
-            throw std::runtime_error("if(border_rebras.size()==0)");
-        while(border_rebras.size())
+        point rc=rebro_center(rebro12);
+        auto p3=find( rc,{},{},0);
+        if(p3!=-1)
         {
-            printf("triangles size %d\n", triangles.size());
-            auto rebro=border_rebras[0];
-            border_rebras.pop_front();
-            {
-//                auto &rebro=rebro1;
-                if(rebro->opposize_pts.size()==2)
-                    continue;
-                if(rebro->opposize_pts.size()!=1)
-                    throw std::runtime_error("if(r->opposize_pts.size()!=1) "+std::to_string(rebro->opposize_pts.size()));
+            std::set<int> s_23({p2,p3});
+            std::set<int> s_13({p1,p3});
 
+            REF_getter<rebro_container> rebro23(getRebroOrCreate(s_23,"process rebras"));
+            REF_getter<rebro_container> rebro13(getRebroOrCreate(s_13,"process rebras"));
+
+            pointInfo & _pi3=pointInfos[p3];
+
+//            printf("4 rebro12->opposize_pts.size() %d\n",rebro12->opposize_pts.size());
+
+            _pi1.add_neighbours({p2,p3});
+            _pi2.add_neighbours({p1,p3});
+            _pi3.add_neighbours({p1,p2});
+
+            rebro23->add_opposite_pts(p1);
+            rebro13->add_opposite_pts(p2);
+            rebro12->add_opposite_pts(p3);
+
+            _pi1.add_to_rebras(rebro13);
+            _pi2.add_to_rebras(rebro23);
+            _pi3.add_to_rebras(rebro13);
+            _pi3.add_to_rebras(rebro23);
+
+
+
+            /// global border_rebras
+            for(auto& r:{rebro13,rebro23,rebro12})
+            {
+                border_rebras_to_process.push_back(r);
+            }
+
+
+            std::set<int> s= {p1,p2,p3};
+            if(s.size()!=3)
+                throw std::runtime_error("if(s.size()!=3)##1");
+            triangles.insert(s);
+
+        }
+
+        while(border_rebras_to_process.size())
+        {
+
+            auto rebro=border_rebras_to_process[0];
+            border_rebras_to_process.pop_front();
+
+                if(rebro->opposize_pts.size()==2)
+                {
+                    continue;
+                }
+                if(rebro->opposize_pts.size()>2)
+                    throw std::runtime_error("if(rebro->opposize_pts.size()>2) "+std::to_string(rebro->opposize_pts.size()));
+
+//                if()
                 int p1=rebro->left();
                 int p2=rebro->right();
                 auto a1=can_find_and_add_new(p1);
@@ -328,10 +371,6 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
                     }
                 }
 
-//                current=next_rebro;
-//                if(next_rebro->opposize_pts.size()==2)
-//                    curren
-            }
         }
     }
 
