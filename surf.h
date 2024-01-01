@@ -101,19 +101,8 @@ struct surface
     }
     std::vector<point > pts;
 
-    struct _algoFind
-    {
-        _algoFind():need_rebuild(true) {}
-        std::multimap<real,int> dists;
-        point reper;
-        bool need_rebuild;
-    };
     int algoFind__findBrutforce(const std::set<int> &searchSet1, const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
-//    int algoFind__findNearest(const point &pt,
-//                              const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
-    void algoFind__rebuild(const point &p, const std::vector<point >&pts, const std::set<int> &searchSet);
 
-    _algoFind algoFind;
 
     std::vector<pointInfo> pointInfos;
     std::map<std::set<int>,REF_getter<rebro_container> > rebras_to_process;
@@ -143,11 +132,13 @@ struct surface
     }
 
     REF_getter<rebro_container> getRebroOrCreate(const std::set<int>& s, const char* comment);
-    int process_point(int p1);
+    int process_point(int p1, const REF_getter<figure> &fig);
 
 
 
     void calc_picture_size();
+    bool line_len_ok(real len);
+
 
 };
 

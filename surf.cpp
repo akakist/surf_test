@@ -5,6 +5,10 @@
 #include <deque>
 #include <json/json.h>
 #define MAX_N 3
+bool surface::line_len_ok(real len)
+{
+    return len<picture_size/20;
+}
 bool is_triangle_good(const point& p1,const point&  p2, const point&  p3)
 {
     return true;
@@ -47,7 +51,7 @@ point surface::rebro_center(const REF_getter<rebro_container> & rebro)
     p.div(rebro->points.size());
     return p;
 }
-int surface::process_point( int p1)
+int surface::process_point( int p1, const REF_getter<figure>& fig)
 {
     int ret_N_inserted_rebras=0;
     pointInfo &pi1=pointInfos[p1];
@@ -111,18 +115,26 @@ int surface::process_point( int p1)
                     REF_getter<rebro_container> rebro13(r3);
                     REF_getter<rebro_container> rebro12(r2);
 
-                    pi2.add_neighbours({peerpoint3});
-                    pi3.add_neighbours({peerpoint2});
+                    if(rebro12->opposize_pts.size()<2 &&
+                            rebro13->opposize_pts.size()<2 &&
+                            rebro23->opposize_pts.size()<2 )
+                    {
+
+                        pi2.add_neighbours({peerpoint3});
+                        pi3.add_neighbours({peerpoint2});
 
 
-                    pi2.add_to_rebras(rebro23);
-                    pi3.add_to_rebras(rebro23);
-                    pi1.figure_->rebras.insert({rebro23->points,rebro23});
+                        pi2.add_to_rebras(rebro23);
+                        pi3.add_to_rebras(rebro23);
+                        fig->rebras.insert({rebro23->points,rebro23});
 
-                    rebro12->add_opposite_pts(peerpoint3);
-                    rebro13->add_opposite_pts(peerpoint2);
-                    rebro23->add_opposite_pts(p1);
-                    triangles.insert({p1,peerpoint2,peerpoint3});
+                        rebro12->add_opposite_pts(peerpoint3);
+                        rebro13->add_opposite_pts(peerpoint2);
+                        rebro23->add_opposite_pts(p1);
+                        triangles.insert({p1,peerpoint2,peerpoint3});
+                    }
+                    else
+                        printf("skipped by all has 2 opps\n");
 
                 }
 
@@ -166,7 +178,7 @@ int surface::step2_connect_unlinked_points()
                 {
 
                             auto d=fdist(pts[p1],f_all.second->center_point());
-                            if(d<min1)
+                            if(d<min1 && line_len_ok(d))
                             {
                                 min1=d;
                                 f_peer=f_all.second;
@@ -183,7 +195,7 @@ int surface::step2_connect_unlinked_points()
                         if(r.second->opposize_pts.size()==2)
                             continue;
                         auto d=fdist(pts[p1], r.second->center);
-                        if(d<min)
+                        if(d<min && line_len_ok(d))
                         {
                             min=d;
                             sel_rebro_peer=r.second;
@@ -221,7 +233,7 @@ int surface::step2_connect_unlinked_points()
                         f_peer->points.insert(p1);
                         f_peer->sum_points+=pts[p1];
                     }
-                    process_point(p1);
+                    process_point(p1,f_peer);
 
                 }
             }
@@ -318,10 +330,17 @@ void surface::step1_split_to_rectangles()
 void surface::step4_process_points()
 {
     int n=0;
-    for(int i=0; i<pts.size(); i++)
+    for(auto&f: all_figures)
     {
-        n+=process_point(i);
+        for(auto &p: f.second->points)
+        {
+            n=process_point(p,f.second);
+        }
     }
+//    for(int i=0; i<pts.size(); i++)
+//    {
+//        n+=process_point(i);
+//    }
     printf("step4_process_points %d tri inserted\n",n);
 }
 
@@ -348,7 +367,7 @@ int surface::step3_connect_figures()
                     if(f_process->id!=f_all.second->id)
                     {
                         auto d=fdist(f_process->center_point(),f_all.second->center_point());
-                        if(d<min1)
+                        if(d<min1 && line_len_ok(d))
                         {
                             min1=d;
                             f_peer=f_all.second;
@@ -385,7 +404,7 @@ int surface::step3_connect_figures()
             for(auto& p: f_process->points)
             {
                 auto d=fdist(pts[p], f_peer->center_point());
-                if(d<min)
+                if(d<min && line_len_ok(d))
                 {
                     min=d;
                     sel_point_process=p;
@@ -405,7 +424,7 @@ int surface::step3_connect_figures()
                     if(r.second->opposize_pts.size()==2)
                         continue;
                     auto d=fdist(pts[sel_point_process], r.second->center);
-                    if(d<min)
+                    if(d<min && line_len_ok(d))
                     {
                         min=d;
                         sel_rebro_peer=r.second;
@@ -460,7 +479,7 @@ int surface::step3_connect_figures()
                     f_process->sum_points= {0,0,0};
                     all_figures.erase(f_process->id);
                 }
-                process_point(sel_point_process);
+                process_point(sel_point_process,f_peer);
 
             }
         }
@@ -495,6 +514,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     printf("step3_connect_figures %d\n",step3_connect_figures());
     step4_process_points();
     printf("step3_connect_figures %d\n",step3_connect_figures());
+    for(int i=0;i<10;i++)
     step4_process_points();
 
     printf("all splitted to triangles\n");
@@ -647,7 +667,7 @@ int surface::algoFind__findBrutforce(const std::set<int>& searchSet1,
         }
 
         double d=fdist(pt,pts[i]);
-        if(d>picture_size/20)
+        if(! line_len_ok(d))
             continue;
         if(d<min_d)
         {
@@ -660,71 +680,7 @@ int surface::algoFind__findBrutforce(const std::set<int>& searchSet1,
     }
     return selected;
 }
-#ifdef KALL
-int surface::algoFind__findNearest(const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount)
-{
-    if(algoFind.need_rebuild)
-    {
-        algoFind__rebuild(pt,pts,searchSet);
-        algoFind.need_rebuild=false;
-    }
-    real reper_dist=fdist(pt,algoFind.reper);
-    std::set<int> result;
-    for(auto it=algoFind.dists.begin(); it!=algoFind.dists.end(); it++)
-    {
-        auto& newp=it->second;
-        auto& d=it->first;
-        if(d>reper_dist && result.size())
-            break;
-        {
-            pointInfo pi=pointInfos[newp];
 
-            if(pi.neighbours.size()>refcount)
-            {
-                continue;
-            }
-            if(rebro.count(newp))
-            {
-                continue;
-            }
-            if(except_pts.count(newp))
-            {
-                continue;
-            }
-
-            result.insert(newp);
-        }
-    }
-    real min_d=std::numeric_limits<double>::max();
-    int selected=-1;
-    for(auto& z: result)
-    {
-        double d=fdist(pt,pts[z]);
-        if(d<min_d)
-        {
-            min_d=d;
-            selected=z;
-        }
-
-    }
-    if(result.size()>1000)
-        algoFind.need_rebuild=true;
-
-    if(selected==-1)
-        throw std::runtime_error("if(selected==-1)");
-    return selected;
-
-}
-#endif
-void surface::algoFind__rebuild(const point &p, const std::vector<point >&pts,const std::set<int> &searchSet)
-{
-    algoFind.dists.clear();
-    algoFind.reper=p;
-    for(auto& i: searchSet)
-    {
-        algoFind.dists.insert({fdist(p,pts[i]),i});
-    }
-}
 void surface::calc_picture_size()
 {
     point min=pts[0];

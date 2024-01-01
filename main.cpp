@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     }
     if(infile.size()==0 || outfile.size()==0)
     {
-        infile="/Users/sergejbelalov/sphere-nodes.xyz";
+        infile="/Users/sergejbelalov/saddle-nodes.xyz";
         outfile="sphere.xyz";
 //        throw std::runtime_error("infile or outfile not specified");
     }
