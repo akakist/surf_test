@@ -54,7 +54,7 @@ int surface::process_point( int p1)
     std::set<std::set<REF_getter<rebro_container>>> border_rebras_pairs;
 
     {
-        if(pi1.rebras.size()!=3)return ret_N_inserted_rebras;
+//        if(pi1.rebras.size()!=3)return ret_N_inserted_rebras;
         auto border_rebras1=pi1.border_rebras_get();
 
         /// берем все комбинации ребер, выходящих из одной точки
