@@ -8,6 +8,7 @@
 #include "utils.h"
 #include <deque>
 #include <string.h>
+#include <json/json.h>
 //struct point_p;
 enum ABLE {
     ABLE_FIND_AND_ADD=1,
@@ -61,6 +62,7 @@ struct figure: public Refcountable
     {
         return sum_points/points.size();
     }
+
 };
 
 struct pointInfo
@@ -70,17 +72,35 @@ struct pointInfo
 
     std::set<int> neighbours;
     REF_getter<figure> figure_;
-    std::set<REF_getter<rebro_container>> border_rebras_get()
+//    bool is_bordered=false;
+    std::string dump(int pt)
     {
-        std::set<REF_getter<rebro_container>> ret;
+        Json::Value j;
+        j["pt"]=pt;
+//        j["is_bordered"]=is_bordered;
+        j["figure_"]=figure_->id;
+        for(auto& n:neighbours)
+        {
+            j["neighbours"].append(n);
+        }
+        return j.toStyledString()+"\n";
+    }
+    bool can_connected()
+    {
+        if(rebras.size()==0)
+            return true;
+        if(rebras.size()==1)
+        {
+            return true;
+        }
         for(auto& r:rebras)
         {
             if(r.second->opposize_pts.size()<2)
             {
-                ret.insert(r.second);
+                return true;
             }
         }
-        return ret;
+        return false;
 
     }
     void add_to_rebras(const REF_getter<rebro_container>& r)
@@ -103,7 +123,6 @@ struct surface
 
     int algoFind__findBrutforce(const std::set<int> &searchSet1, const point &pt, const std::set<int> &rebro, const std::set<int> &except_pts, int refcount);
 
-
     std::vector<pointInfo> pointInfos;
     std::map<std::set<int>,REF_getter<rebro_container> > rebras_to_process;
     std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
@@ -112,9 +131,20 @@ struct surface
     real picture_size;
     void step1_split_to_rectangles();
     int step3_connect_figures();
-    void step4_process_points();
-    int step2_connect_unlinked_points();
+//    void step4_process_points();
+//    int step2_connect_unlinked_points();
+    void stepN_create_figures_from_unlinked_points();
+    std::string dump_figure(const REF_getter<figure> &f);
+    bool figure_has_unbordered(const REF_getter<figure>& f);
+    REF_getter<figure> connect_2_figures(const REF_getter<figure>& f1, const REF_getter<figure>& f2);
+    int get_nearest_point_in_figure(const REF_getter<figure> &f1, const point& p);
+    void make_rebring();
+    void make_rebring2();
+    void fill_rebring_1();
 
+
+
+    int figIdGen=0;
 
     std::map<int,REF_getter<figure>> all_figures;
 
@@ -133,12 +163,10 @@ struct surface
 
     REF_getter<rebro_container> getRebroOrCreate(const std::set<int>& s, const char* comment);
     int process_point(int p1, const REF_getter<figure> &fig);
-
-
+    void move_content(const REF_getter<figure>& to, const REF_getter<figure>&from);
 
     void calc_picture_size();
     bool line_len_ok(real len);
-
 
 };
 

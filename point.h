@@ -42,6 +42,12 @@ struct point
         z+=p.z;
         return *this;
     }
+    point &operator-=(const point &p) {
+        x-=p.x;
+        y-=p.y;
+        z-=p.z;
+        return *this;
+    }
     friend  inline const point operator+(const point &, const point &);
     friend  inline const point operator-(const point &, const point &);
     friend  inline const point operator/(const point &, double);
