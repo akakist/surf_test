@@ -140,7 +140,13 @@ struct surface
     int get_nearest_point_in_figure(const REF_getter<figure> &f1, const point& p);
     void make_rebring();
     void make_rebring2();
-    void fill_rebring_1();
+    void fill_rebring_2();
+    void process_point2(int p0, std::set<int> &interesting_points);
+    void make_rebring3();
+    void connect_unlinked_points();
+    void triangulate_figure(const REF_getter<figure> &F);
+    void supress_figures();
+
 
 
 

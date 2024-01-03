@@ -13,6 +13,7 @@ SOURCES += \
         jsoncpp-0.5.0/src/lib_json/json_writer.cpp \
         main.cpp \
         surf.cpp \
+        surf_old.cpp \
         utils.cpp
 
 # Default rules for deployment.
