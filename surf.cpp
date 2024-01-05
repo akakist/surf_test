@@ -61,24 +61,6 @@ struct compare_stuff
 };
 //std::deque<REF_getter<figure> >
 //std::map<int,REF_getter<figure> > figures;
-#ifdef KALL
-void surface::step4_process_points()
-{
-    int n=0;
-    for(auto&f: all_figures)
-    {
-        for(auto &p: f.second->points)
-        {
-            n=process_point(p,f.second);
-        }
-    }
-//    for(int i=0; i<pts.size(); i++)
-//    {
-//        n+=process_point(i);
-//    }
-    printf("step4_process_points %d tri inserted\n",n);
-}
-#endif
 void surface::move_content(const REF_getter<figure>& to, const REF_getter<figure>&from)
 {
     for(auto&p: from->points)
@@ -115,156 +97,15 @@ std::string surface::dump_figure(const REF_getter<figure>&f)
     return j.toStyledString();
 //    f->
 }
-bool surface::figure_has_unbordered(const REF_getter<figure>& f)
-{
-    for(auto& p:f->points)
-    {
-        pointInfo& pi=pointInfos[p];
-        if(pi.can_connected())
-        {
-
-        }
-
-    }
-}
-void surface::make_rebring3()
-{
-    std::set<int> searchSet;
-    for(int i=0; i<pts.size(); i++)
-    {
-        searchSet.insert(i);
-    }
-
-}
-void surface::make_rebring2()
-{
-    std::set<int> searchSet;
-    for(int i=0; i<pts.size(); i++)
-    {
-        searchSet.insert(i);
-    }
-    std::set<int> processedSet;
-    processedSet.insert(0);
-    int p0=0;
-    searchSet.erase(p0);
-//    std::set<int> processed;
-    while(searchSet.size())
-    {
-        auto min=std::numeric_limits<real>::max();
-        int selected=-1;
-        for(auto& s:searchSet)
-        {
-            auto d=fdist(pts[p0],pts[s]);
-            if(d<min && line_len_ok(d))
-            {
-                selected=s;
-                min=d;
-            }
-        }
-        if(processedSet.count(selected))
-        {
-            printf("processedSet.count(selected)\n");
-        }
-        if(selected==-1 /*|| processedSet.count(selected)*/)
-        {
-            break;
-#ifdef KALL
-            printf("start new branch\n");
-            printf("if(selected==-1 || processedSet.count(selected))\n");
-            for(int i=0; i<pts.size(); i++)
-            {
-                searchSet.insert(i);
-            }
-
-            int sel=-1;
-            int cnt=0;
-
-            for(int z=0; z<pointInfos.size(); z++)
-            {
-//                searchSet.clear();
-                if(pointInfos[z].neighbours.size()==0)
-                    sel=z;
-            }
-            printf("new brach start %d\n",sel);
-            if(sel==-1)
-                break;
-            searchSet.erase(sel);
-            p0=sel;
-            //printf("cnt=%d\n",cnt);
-            //throw std::runtime_error("if(selected==-1)");
-            continue;
-#endif
-        }
-        auto &pi0=pointInfos[p0];
-        auto &pi1=pointInfos[selected];
-        pi0.add_neighbours({selected});
-        pi1.add_neighbours({p0});
-        auto r=getRebroOrCreate({p0,selected},"make_rebring");
-        pi0.add_to_rebras(r);
-        pi1.add_to_rebras(r);
-        searchSet.erase(selected);
-        p0=selected;
-//        processedSet.insert(p0);
-        processedSet.insert(selected);
-    }
-    for(int i=0; i<pts.size(); i++)
-    {
-        searchSet.insert(i);
-    }
-
-    std::set<int> lost;
-    for(int z=0; z<pointInfos.size(); z++)
-    {
-//                searchSet.clear();
-        if(pointInfos[z].neighbours.size()<2)
-            lost.insert(z);
-    }
-    for(auto& l:lost)
-    {
-        printf("lost %d\n",l);
-        auto &pil=pointInfos[l];
-        auto min=std::numeric_limits<real>::max();
-        int selected=-1;
-        for(auto& s:searchSet)
-        {
-            if(s==l) continue;
-            if(pil.neighbours.count(s))
-                continue;
-            auto d=fdist(pts[l],pts[s]);
-            if(d<min && line_len_ok(d))
-            {
-                selected=s;
-                min=d;
-            }
-        }
-        if(selected==-1)
-        {
-            break;
-            throw std::runtime_error("if(selected==-1)");
-        }
-
-        int p0=l;
-        auto &pi0=pointInfos[p0];
-        auto &pi1=pointInfos[selected];
-        pi0.add_neighbours({selected});
-        pi1.add_neighbours({p0});
-        auto r=getRebroOrCreate({p0,selected},"lost");
-        pi0.add_to_rebras(r);
-        pi1.add_to_rebras(r);
-        searchSet.erase(selected);
-        p0=selected;
-
-    }
-
-}
 void surface::connect_unlinked_points()
 {
     std::set<int> to_process;
     std::set<int> seachSet;
     for(int i=0;i<pointInfos.size();i++)
     {
-        auto &pi=pointInfos[i];
-        if(pi.neighbours.size()==0 || pi.neighbours.size()==1)
+        auto &pi0=pointInfos[i];
+
+        if(!pi0.figure_.valid())
         {
             to_process.insert(i);
         }
@@ -291,21 +132,23 @@ void surface::connect_unlinked_points()
                     min=d;
                 }
             }
-            auto r=getRebroOrCreate({p,selected},"connect_unlinked");
-            auto p0=p;
-            auto p1=selected;
-            auto &pi0=pointInfos[p];
-            auto &pi1=pointInfos[selected];
-            pi0.add_neighbours({p1});
-            pi1.add_neighbours({p0});
-            pi0.add_to_rebras(r);
-            pi1.add_to_rebras(r);
-            if(!pi1.figure_.valid())
-                throw std::runtime_error("if(!pi1.figure_.valid())");
-            pi0.figure_=pi1.figure_;
-            pi1.figure_->points.insert(p0);
-            pi1.figure_->sum_points+=pts[p];
-
+            if(selected!=-1)
+            {
+                auto r=getRebroOrCreate({p,selected},"connect_unlinked");
+                auto p0=p;
+                auto p1=selected;
+                auto &pi0=pointInfos[p];
+                auto &pi1=pointInfos[selected];
+                pi0.add_neighbours({p1});
+                pi1.add_neighbours({p0});
+                pi0.add_to_rebras(r);
+                pi1.add_to_rebras(r);
+                if(!pi1.figure_.valid())
+                    throw std::runtime_error("if(!pi1.figure_.valid())");
+                pi0.figure_=pi1.figure_;
+                pi1.figure_->points.insert(p0);
+                pi1.figure_->sum_points+=pts[p];
+            }
 
 
         }
@@ -346,7 +189,7 @@ void surface::supress_figures()
         if(f2.valid() && f.second.valid())
         {
             connect_2_figures(f2,f.second);
-            triangulate_figure(f2);
+//            triangulate_figure(f2);
         }
     }
 
@@ -375,234 +218,233 @@ REF_getter<figure> surface::connect_2_figures(const REF_getter<figure>& f1, cons
     move_content(f1,f2);
     return f1;
 }
-
-void surface::triangulate_figure(const REF_getter<figure> &F)
+//void surface::/*connect_2_figures*/(
+std::string dump_set_int(const std::set<int> &s)
 {
-    auto ps=F->points;
+    std::string out;
+    for(auto& z:s)
+    {
+        out+=std::to_string(z)+" ";
+    }
+    return out;
+}
+void surface::proceed_tiangle(int p0, int p2, int p3)
+{
+    if(!validate_triangle(p0,p2,p3))
+        return;
+    auto &pi0=pointInfos[p0];
+    auto &pi2=pointInfos[p2];
+    auto &pi3=pointInfos[p3];
+    auto r02=getRebroOrCreate({p0,p2},"link_neighbours2");
+    auto r03=getRebroOrCreate({p0,p3},"link_neighbours2");
+    auto r23=getRebroOrCreate({p2,p3},"link_neighbours2");
+
+    if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)
+    {
+        printf("if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)\n");
+        return;
+    }
+    pi0.add_to_rebras(r02);
+    pi0.add_to_rebras(r03);
+    pi2.add_to_rebras(r02);
+    pi2.add_to_rebras(r23);
+    pi3.add_to_rebras(r03);
+    pi3.add_to_rebras(r23);
+
+    pi0.add_neighbours({p2,p3});
+    pi2.add_neighbours({p0,p3});
+    pi3.add_neighbours({p0,p2});
+    r02->add_opposite_pts(p3);
+    r03->add_opposite_pts(p2);
+    r23->add_opposite_pts(p0);
+    if(r02->opposize_pts.size()==2)
+    {
+        pi0.neighbours.erase(p2);
+        pi2.neighbours.erase(p0);
+    }
+    if(r03->opposize_pts.size()==2)
+    {
+        pi0.neighbours.erase(p3);
+        pi3.neighbours.erase(p0);
+    }
+    if(r23->opposize_pts.size()==2)
+    {
+        pi2.neighbours.erase(p3);
+        pi3.neighbours.erase(p2);
+    }
+
+    if(!triangles.count({p0,p2,p3}))
+    {
+        printf("1 add triangle %s\n",dump_set_int({p0,p2,p3}).c_str());
+        triangles.insert({p0,p2,p3});
+    }
+    else
+        printf("2 triangle already inserted %s\n",dump_set_int({p0,p2,p3}).c_str());
+
+
+}
+bool surface::validate_triangle(int a, int b, int c)
+{
+//    return true;
+    auto d1=fdist(pts[a],pts[b]);
+    auto d2=fdist(pts[a],pts[c]);
+    auto d3=fdist(pts[b],pts[c]);
+    auto max=std::max(d1, std::max(d2,d3));
+    auto min=std::min(d1, std::max(d2,d3));
+    if(max>min*10)
+        return false;
+    return true;
+
+}
+int surface::find_nearest(const point& pt, const std::set<int> &ps)
+{
+//    printf("find_nearest sz %d\n",ps.size());
+    auto min=std::numeric_limits<real>::max();
+    int sel=-1;
     for(auto& p:ps)
     {
-        auto& pi=pointInfos[p];
-        if(!pi.can_connected())
+        auto d=fdist(pt,pts[p]);
+        if(d<min)
         {
-            F->points.erase(p);
-            F->sum_points-=pts[p];
-        }
-        else
-        {
-            std::set<int> interesting_points;
-            process_point2(p,interesting_points);
+            min=d;
+            sel=p;
         }
     }
-    for(auto&p: F->points)
-    {
-        auto& pi=pointInfos[p];
-        if(!pi.can_connected())
-            throw std::runtime_error("if(!pi.can_connected())");
-    }
+    return sel;
 }
-//void surface::/*connect_2_figures*/(
-void surface::process_point2(int p0, std::set<int>& interesting_points)
+void surface::link_neighbours2(const REF_getter<figure>&f)
 {
-//    while(interested_points.size())
+    std::set<int> interested;
+    for(auto &p0:f->points)
+        interested.insert(p0);
+    printf("interested %d\n",interested.size());
+    while(interested.size())
     {
-//        printf("interested_points.size() %d\n",interested_points.size());
-//        int p0=*interested_points.begin();
-//        interested_points.erase(interested_points.begin());
-        /// 2 кейса - первый - 2 ребра с одним оппозитом
-        /// либо 2 ребра с одним оппозитом и 1 ребро без оппозитов.
-        /// в первом случае соединяем 2 ребра если угол < 150 и он вогнутый.
-        /// внутреннюю точку удаляем из фигуры и делаем ее is_boarded=false
-        /// во втором случае соединяем 2 пары, если угол <150
 
-        auto& pi0=pointInfos[p0];
-        printf("process_point2 pi0.rebras.size() %d\n",pi0.rebras.size());
-        if(pi0.rebras.size()==0) return;
-        if(pi0.rebras.size()==1) return;
-//        if(pi0.rebras.size()==2)
+        int p0=*interested.begin();
+        interested.erase(interested.begin());
+//        printf("link_neighbours2\n");
+        auto &pi0=pointInfos[p0];
+//        std::set<REF_getter<rebro_container> >rs;
+        auto nf=pi0.not_filles_rebras();
+        printf("pi0.neighbours.size() %d\n",pi0.neighbours.size());
+        printf("nf.size() %d\n",nf.size());
+/// нужно сначала делать if(pi0.neighbours.size()==1 && nf.size()==1) поскольку иначе идет забивка треугольниками
+
+        if(pi0.neighbours.size()==1 && nf.size()==1)
         {
-            if(pi0.rebras.size()==2)
+//            printf("if(pi0.neighbours.size()==1 && nf.size()==1)\n");
+            auto p2=*pi0.neighbours.begin();
+            auto pi2=pointInfos[p2];
+            auto nf2=pi2.not_filles_rebras();
+            printf("nf2 size %d\n",nf2.size());
+            for(auto& n:nf2)
             {
-                printf("if(pi0.rebras.size()==2)\n");
-                printf("p0 %d\n",p0);
-                std::vector<int> tops;
-                for(auto& r:pi0.rebras)
-                    printf("r opps %d\n",r.second->opposize_pts.size());
-
-                printf("pi0 can connected %d\n",pi0.can_connected());
-                for(auto& z:pi0.rebras)
+                if(!n->points.count(p0))
                 {
-                    auto s=z.second->points;
-                    s.erase(p0);
-                    if(s.size()!=1)
-                        throw std::runtime_error("if(s.size()!=1)");
-
-                    tops.push_back(*s.begin());
+                    auto p3=get_rebro_peer(n,p2);
+                    proceed_tiangle(p0,p2,p3);
                 }
-                if(tops.size()==2)
-                {
-                    printf("if(tops.size()==2)\n");
-                    int p2=*tops.begin();
-                    int p3=*tops.rbegin();
-                    auto a=Angle::angle(pts[p2]-pts[p0],pts[p3]-pts[p0]);
-                    printf("angle %lf\n",a);
-                    if(a<90)
-                    {
-                        auto r02=getRebroOrCreate({p0,p2},"wrong case");
-                        auto r03=getRebroOrCreate({p0,p3},"wrong case");
-                        printf("join zzz p0,p2,p3 %d %d %d\n",p0,p2,p3);
-                        printf("rebro exists {%d,%d} %d\n",p2,p3,all_rebras.count({p2,p3}));
-                        auto r23=getRebroOrCreate({p2,p3},"process_point2-1");
-                        auto &pi0=pointInfos[p0];
-                        auto &pi2=pointInfos[p2];
-                        auto &pi3=pointInfos[p3];
-                        pi2.add_neighbours({p3});
-                        pi3.add_neighbours({p2});
-                        pi2.add_to_rebras(r23);
-                        pi3.add_to_rebras(r23);
-                        r23->opposize_pts.insert(p0);
-                        r02->opposize_pts.insert(p3);
-                        r03->opposize_pts.insert(p2);
-printf("triangles count %d\n",triangles.count({p0,p2,p3}));
-                        triangles.insert({p0,p2,p3});
-                        interesting_points.insert({p0,p2,p3});
-
-                    }
-
-                }
-
+//                elseprintf("")
             }
-            return;
-        }
 
-        {
-            printf("rebras %d\n",pi0.rebras.size());
-            std::vector<int> tops;
-            for(auto& z:pi0.rebras)
-            {
-                auto s=z.second->points;
-                s.erase(p0);
-                if(s.size()!=1)
-                    throw std::runtime_error("if(s.size()!=1)");
-
-                tops.push_back(*s.begin());
-            }
-            std::vector<std::set<int>> all_combinations;
-            for(int i=0; i<tops.size(); i++)
-            {
-                for(int j=0; j<tops.size(); j++)
-                {
-                    if(tops[i]!=tops[j])
-                    {
-                        all_combinations.push_back({tops[i],tops[j]});
-                    }
-                }
-            }
-            /// вычисляем углы для каждой комбинации
-            std::map<real, std::set<int>  > angle_for_combination;
-            for(auto& c:all_combinations)
-            {
-                auto p2=*c.begin();
-                auto p3=*c.rbegin();
-                auto a=Angle::angle(pts[p2]-pts[p0],pts[p3]-pts[p0]);
-                printf("a %lf\n",a);
-                angle_for_combination.insert({a,c});
-            }
-            if(angle_for_combination.size()==0)
-                throw std::runtime_error("if(angle_for_combination.size()==0)");
-
-            /// находим по 2 комбинации с наименьшим углом для каждой вершины.
-//                sort(angle_for_combination.begin(),angle_for_combination.end());
-            std::map<int,std::set<std::set<int>>> collections;
-//                for(auto& top: tops)
-            {
-                for(auto& c: angle_for_combination)
-                {
-                    auto p2=*c.second.begin();
-                    auto p3=*c.second.rbegin();
-                    if(collections[p2].size()<2)
-                    {
-                        collections[p2].insert(c.second);
-                    }
-                    if(collections[p3].size()<2)
-                    {
-                        collections[p3].insert(c.second);
-                    }
-                }
-            }
-            /// собираем пары в одну кучу
-            std::set<std::set<int>> heap;
-            for(auto& z: collections)
-            {
-                for(auto& s:z.second)
-                {
-                    heap.insert(s);
-                }
-            }
-            /// соединяем пары
-            for(auto&c: heap)
-            {
-
-                auto p2=*c.begin();
-                auto p3=*c.rbegin();
-                auto a=Angle::angle(pts[p2]-pts[p0],pts[p3]-pts[p0]);
-                if(a>120)
-                {
-                    printf("if(a>160) \n");
-                    continue;
-                }
-                auto r02=getRebroOrCreate({p0,p2},"wrong case");
-                auto r03=getRebroOrCreate({p0,p3},"wrong case");
-                if(r02->opposize_pts.size()==2)
-                    continue;
-                if(r03->opposize_pts.size()==2)
-                    continue;
-                printf("join zzz p0,p2,p3 %d %d %d\n",p0,p2,p3);
-                auto r23=getRebroOrCreate({p2,p3},"process_point2");
-                auto &pi0=pointInfos[p0];
-                auto &pi2=pointInfos[p2];
-                auto &pi3=pointInfos[p3];
-                pi2.add_neighbours({p3});
-                pi3.add_neighbours({p2});
-                pi2.add_to_rebras(r23);
-                pi3.add_to_rebras(r23);
-                r23->opposize_pts.insert(p0);
-                r02->opposize_pts.insert(p3);
-                r03->opposize_pts.insert(p2);
-                triangles.insert({p0,p2,p3});
-                interesting_points.insert({p0,p2,p3});
-
-            }
 
         }
 
-//            auto r0=pi0.border_rebras_get(0);
-//            auto r1=pi0.border_rebras_get(1);
-//            printf("r0 size %d\n",r0.size());
-//            printf("r1 size %d\n",r1.size());
-//            if(r1.size()==2)
+        if(pi0.neighbours.size()==2 && nf.size()==2)
+        {
+            auto ns=pi0.neighbours;
+            int p1=*ns.begin();ns.erase(ns.begin());
+            int p2=*ns.begin();ns.erase(ns.begin());
+            proceed_tiangle(p0,p1,p2);
+
+
+        }
+        if(pi0.neighbours.size()==3)
+        {
+            auto ns=pi0.neighbours;
+            int p1=*ns.begin();ns.erase(ns.begin());
+            int p2=*ns.begin();ns.erase(ns.begin());
+            int p3=*ns.begin();ns.erase(ns.begin());
+
+            proceed_tiangle(p0,p1,p2);
+            proceed_tiangle(p0,p1,p3);
+            proceed_tiangle(p0,p2,p3);
+            f->points.erase(p0);
+            for(auto& n: pi0.neighbours)
+            {
+                auto pin=pointInfos[n];
+                pin.neighbours.erase(p0);
+            }
+
+//            continue;
+        }
+        nf=pi0.not_filles_rebras();
+        if(nf.size()==2)
+        {
+            std::set<int> pt_s;
+            for(auto& r:nf)
+            {
+                for(auto& p:r->points)
+                    pt_s.insert(p);
+            }
+            pt_s.erase(p0);
+            if(pt_s.size()!=2)
+                throw std::runtime_error("if(pt_s.size()!=2)");
+            proceed_tiangle(p0,*pt_s.begin(),*pt_s.rbegin());
+//            continue;
+        }
+        if(pi0.neighbours.size()==0)
+        {
+            f->points.erase(p0);
+//            continue;
+        }
+
+        if(pi0.neighbours.size() == nf.size() && pi0.neighbours.size()>3)
+        {
+//            printf("tyry nf\n");
+            int p1=find_nearest(pts[p0],pi0.neighbours);
+            if(p1!=-1)
+            {
+                auto ns=pi0.neighbours;
+                ns.erase(p1);
+                ns.erase(p0);
+                int p2=find_nearest(pts[p1],ns);
+                if(p2!=-1)
+                {
+                    proceed_tiangle(p0,p1,p2);
+                }
+                else
+                    printf("!if(p2!=-1)\n");
+                continue;
+            }
+            else
+                printf("!if(p1!=-1)\n");
+
+        }
+         nf=pi0.not_filles_rebras();
+        printf("L pi0.neighbours.size() %d\n",pi0.neighbours.size());
+        printf("L nf.size() %d\n",nf.size());
+
+//        if(pi0.neighbours.size()>3 && nf.size()==0)
+//        {
+//            f->points.erase(p0);
+//            for(auto& n: pi0.neighbours)
 //            {
-
+//                auto pin=pointInfos[n];
+//                pin.neighbours.erase(p0);
 //            }
-    }
 
-}
-
-void surface::fill_rebring_2()
-{
-    std::set<int> interesting;
-    for(int i=0; i<pts.size(); i++)
-    {
-        process_point2(i,interesting);
+//        }
     }
-    while(interesting.size())
+    int cnt=0;
+    for(auto& p: f->points)
     {
-        auto cp=interesting;
-        interesting.clear();
-        for(auto& p:interesting)
-        {
-            process_point2(p,interesting);
-        }
+        auto& pi=pointInfos[p];
+        if(pi.neighbours.size()==2)
+            cnt++;
     }
+    printf("fig %d p.neighbours.size()==2 cnt %d\n", f->id,cnt);
 }
 
 //    return n_result;
@@ -621,61 +463,22 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     pointInfos.resize(pts.size());
 
     printf("max line %lf\n",picture_size/MAX_N);
-    int p1=0;
-    std::set<int> s1;
-    s1.insert(p1);
-    printf("p1 %d\n",p1);
-
-    step1_split_to_rectangles();
+    step1_split_to_pairs();
     connect_unlinked_points();
-    for(auto&f: all_figures)
-        triangulate_figure(f.second);
     supress_figures();
-
-    for(int i=0;i<10;i++)
+    for(int i=0;i<50;i++)
     {
-        for(auto&f: all_figures)
-            triangulate_figure(f.second);
+    for(auto& f:all_figures)
+        link_neighbours2(f.second);
     }
+
 printf("figure_count %d\n",all_figures.size());
 
-//    stepN_create_figures_from_unlinked_points();
-//    make_rebring2();
-//    fill_rebring_2();
-//    fill_rebring_2();
-//    fill_rebring_2();
-//    fill_rebring_2();
-//    printf
-#ifdef KALL
-    stepN_create_figures_from_unlinked_points();
-//    int n=step2_connect_unlinked_points();
-//    printf("step2_connect_unlinked_points %d\n",n);
-    printf("step3_connect_figures %d\n",step3_connect_figures());
-//    step4_process_points();
-//    step4_process_points();
-    printf("step3_connect_figures %d\n",step3_connect_figures());
-//    step4_process_points();
-    printf("step3_connect_figures %d\n",step3_connect_figures());
-    for(int i=0; i<10; i++)
-    {
-        printf("step3_connect_figures %d\n",step3_connect_figures());
-//        step4_process_points();
-    }
-#endif
     printf("all splitted to triangles\n");
-//    return;
-    pointInfo _pi1=pointInfos[p1];
-//    auto p2=find(searchSet,pts[p1], {p1}, {},0);
-//    printf("p2 %d\n",p2);
+//    pointInfo _pi1=pointInfos[p1];
 
     printf("triangles %d\n",triangles.size());
     printf("all rebvras %d\n",all_rebras.size());
-    std::map<int,int> border_rebras;
-    for(int i=0; i<pointInfos.size(); i++)
-    {
-        pointInfo& pi=pointInfos[i];
-        border_rebras[pi.can_connected()]++;
-    }
 
     std::map<int,int> opps_for_rebra;
     std::map<const char*,int> byComments;
@@ -692,10 +495,10 @@ printf("figure_count %d\n",all_figures.size());
     {
         printf("byComments %s %d\n",z.first,z.second);
     }
-    for(auto& z: border_rebras)
-    {
-        printf("border_rebras %d %d\n",z.first,z.second);
-    }
+//    for(auto& z: border_rebras)
+//    {
+//        printf("border_rebras %d %d\n",z.first,z.second);
+//    }
 
     std::deque<std::set<int> > added_tri;
     /// connect points with 2 neigbours

@@ -85,6 +85,18 @@ struct pointInfo
         }
         return j.toStyledString()+"\n";
     }
+    std::set<REF_getter<rebro_container> > not_filles_rebras()
+    {
+        std::set<REF_getter<rebro_container> > ret;
+        for(auto& r:rebras)
+        {
+            if(r.second->opposize_pts.size()<2)
+            {
+                ret.insert(r.second);
+            }
+        }
+        return ret;
+    }
     bool can_connected()
     {
         if(rebras.size()==0)
@@ -129,22 +141,26 @@ struct surface
     std::set<std::set<int> > triangles;
     std::set<int> searchSetG;
     real picture_size;
-    void step1_split_to_rectangles();
     int step3_connect_figures();
 //    void step4_process_points();
 //    int step2_connect_unlinked_points();
-    void stepN_create_figures_from_unlinked_points();
     std::string dump_figure(const REF_getter<figure> &f);
-    bool figure_has_unbordered(const REF_getter<figure>& f);
     REF_getter<figure> connect_2_figures(const REF_getter<figure>& f1, const REF_getter<figure>& f2);
     int get_nearest_point_in_figure(const REF_getter<figure> &f1, const point& p);
-    void make_rebring();
-    void make_rebring2();
-    void fill_rebring_2();
-    void process_point2(int p0, std::set<int> &interesting_points);
-    void make_rebring3();
+//    void link_neighbours(int p0);
+    void step1_split_to_pairs();
+    void link_neighbours2(const REF_getter<figure>&f);
+    void proceed_tiangle(int p0, int p2, int p3);
+    bool validate_triangle(int a, int b, int c);
+    int find_nearest(const point& p, const std::set<int> &ps);
+
+
+
+
+
+
     void connect_unlinked_points();
-    void triangulate_figure(const REF_getter<figure> &F);
+//    void triangulate_figure(const REF_getter<figure> &F);
     void supress_figures();
 
 
