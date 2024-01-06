@@ -4,10 +4,10 @@
 #include <iostream>
 #include <deque>
 #include <json/json.h>
-#define MAX_N 10
+#define MAX_N 9
 #define MIN_SUM_ANGLE_TRIANGLES 200
 #define MAX_SUM_ANGLE_TRIANGLES (360-30)
-#define MAX_ANGLE_BETWEEN_NORMALES 90
+#define MAX_ANGLE_BETWEEN_NORMALES 60
 
 point cross(const point& a,const point & v)
 {
@@ -337,7 +337,7 @@ void surface::proceed_add_new_point_between_rebras(int p0)
                 active_points.insert(p22_nearest);
             }
         }
-
+//#ifdef KALL
         if(p33_nearest!=-1) {
             /// тоже самое с другой стороной
             if(proceed_tiangle(p3,p0,p33_nearest).valid())
@@ -346,6 +346,16 @@ void surface::proceed_add_new_point_between_rebras(int p0)
                 active_points.insert(p33_nearest);
             }
         }
+//#endif
+//        if(p22_nearest==-1)
+//        {
+//            r2->opposize_pts.insert(-1);
+//        }
+//        if(p33_nearest==-1)
+//        {
+//            r3->opposize_pts.insert(-1);
+//        }
+
         /// если ближайшие точки не удовлетворяют условию, то оставляем их в unlinked_points,  надеясь, что их используют другие ребра
 
         /// в случае совпадения p22_nearest и p33_nearest p0 попадает внутрь закрашенного региона, поэтому удаляем ее из active_points
@@ -404,10 +414,7 @@ void surface::flood()
         {
 //            printf("step %d\n",p);
             proceed_add_new_point_between_rebras(p);
-            do
-            {
-            }
-            while(proceed_connection_between_tops(p)!=0);
+            while(proceed_connection_between_tops(p)!=0){}
 
         }
     }
