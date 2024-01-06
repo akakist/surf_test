@@ -50,9 +50,6 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     {
         printf("r02 opp %d r03 opp %d r23 opp %d ",r02->opposize_pts.size(),r03->opposize_pts.size(),r23->opposize_pts.size());
         return nullptr;
-        printf("r02 opp %d r03 opp %d r23 opp %d ",r02->opposize_pts.size(),r03->opposize_pts.size(),r23->opposize_pts.size());
-        throw std::runtime_error("if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)\n");
-
     }
     pi0.add_to_rebras(r02);
     pi0.add_to_rebras(r03);
@@ -92,6 +89,8 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     pi3.triangles.insert(t);
     if(!triangles.count({p0,p2,p3}))
     {
+        if(triangles.size()%100==0)
+            std::cout<<"triangles "<< triangles.size()<< std::endl;
         triangles.insert({p0,p2,p3});
     }
     else
@@ -104,7 +103,6 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 }
 int surface::find_nearest(const point& pt, const std::set<int> &ps)
 {
-//    printf("find_nearest sz %d\n",ps.size());
     auto min=std::numeric_limits<real>::max();
     int sel=-1;
     for(auto& p:ps)
@@ -120,7 +118,6 @@ int surface::find_nearest(const point& pt, const std::set<int> &ps)
 }
 int surface::find_nearest_which_can_be_added(const point& pt,  int p0,int p2, int p_opposite)
 {
-//    printf("find_nearest sz %d\n",ps.size());
     auto min=std::numeric_limits<real>::max();
     int sel_unlinked=-1;
     for(auto& p:unlinked_points)
@@ -203,14 +200,14 @@ bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposit
 }
 int surface::proceed_connection_between_tops(int p0)
 {
-    printf("proceed_connection_between_tops\n");
+//    printf("proceed_connection_between_tops\n");
     auto& pi0=pointInfos[p0];
     /// берем ребра, у которых треугольник есть только с одной стороны
     auto notfilled=pi0.not_filles_rebras();
 
     if(notfilled.size()==2)
     {
-        printf("if(notfilled.size()==2)\n");
+//        printf("if(notfilled.size()==2)\n");
         /// их количество должно быть для точки ровно 2, чтобы точка была на границе заполнения
         auto r2=*notfilled.begin();
         auto r3=*notfilled.rbegin();
@@ -240,15 +237,15 @@ int surface::proceed_connection_between_tops(int p0)
             int b=*ps.rbegin();
             sum_angles+=angle_between_3_points(p0,a,b);
         }
-        printf("sum angles %lf\n",sum_angles);
+//        printf("sum angles %lf\n",sum_angles);
         if(sum_angles>MIN_SUM_ANGLE_TRIANGLES /*&& sum_angles<MAX_SUM_ANGLE_TRIANGLES*/)
         {
-            printf("try proceed_tiangle\n");
+//            printf("try proceed_tiangle\n");
             auto t=proceed_tiangle(p0,p2,p3);
             /// удаляем p0 из active_points поскольку она перестала быть граничной.
             if(t.valid())
             {
-                printf("ok\n");
+//                printf("ok\n");
                 active_points.erase(p0);
 
                 return 1;
@@ -256,7 +253,7 @@ int surface::proceed_connection_between_tops(int p0)
         }
         else
         {
-            printf("cancel due angle\n");
+//            printf("cancel due angle\n");
         }
 
     }
@@ -366,18 +363,6 @@ void surface::proceed_add_new_point_between_rebras(int p0)
 
         /////////////////////
     }
-}
-void surface::recalc_active_points()
-{
-    std::set<int> s;
-    for(int i=0; i<pointInfos.size(); i++)
-    {
-        if(pointInfos[i].not_filles_rebras().size()==2)
-            s.insert(i);
-    }
-    if(active_points!=s)
-        printf("active_points != s\n");
-    active_points=s;
 }
 void surface::flood()
 {

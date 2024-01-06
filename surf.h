@@ -108,7 +108,6 @@ struct surface
     void flood();
     void proceed_add_new_point_between_rebras(int p0);
     int proceed_connection_between_tops(int p0);
-    void recalc_active_points();
 
     real angle_between_3_points(int root, int a, int b);
     point cross_between_3_points(int root,int a, int b);
