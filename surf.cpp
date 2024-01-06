@@ -5,6 +5,11 @@
 #include <deque>
 #include <json/json.h>
 #define MAX_N 20
+point cross(const point& a,const point & v)
+{
+  return point(a.y*v.z - a.z*v.y, a.z*v.x - a.x*v.z, a.x*v.y - a.y*v.x);
+}
+
 bool surface::line_len_ok(real len)
 {
 //    return true;
@@ -228,10 +233,10 @@ std::string dump_set_int(const std::set<int> &s)
     }
     return out;
 }
-void surface::proceed_tiangle(int p0, int p2, int p3)
+REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 {
-    if(!validate_triangle(p0,p2,p3))
-        return;
+//    if(!validate_triangle(p0,p2,p3))
+//        return;
     auto &pi0=pointInfos[p0];
     auto &pi2=pointInfos[p2];
     auto &pi3=pointInfos[p3];
@@ -241,8 +246,8 @@ void surface::proceed_tiangle(int p0, int p2, int p3)
 
     if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)
     {
-        printf("if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)\n");
-        return;
+        throw std::runtime_error("if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)\n");
+
     }
     pi0.add_to_rebras(r02);
     pi0.add_to_rebras(r03);
@@ -273,19 +278,29 @@ void surface::proceed_tiangle(int p0, int p2, int p3)
         pi3.neighbours.erase(p2);
     }
 
+    REF_getter<triangle> t=new triangle({p0,p2,p3});
+    t->rebras.insert({r02,r03,r23});
+    t->normal=cross(pts[p2]-pts[p0],pts[p3]-pts[p0]);
+    all_triangles.insert({t->points,t});
+
+    pi0.triangles.insert(t);
+    pi2.triangles.insert(t);
+    pi3.triangles.insert(t);
     if(!triangles.count({p0,p2,p3}))
     {
-        printf("1 add triangle %s\n",dump_set_int({p0,p2,p3}).c_str());
+//        printf("1 add triangle %s\n",dump_set_int({p0,p2,p3}).c_str());
         triangles.insert({p0,p2,p3});
     }
     else
         printf("2 triangle already inserted %s\n",dump_set_int({p0,p2,p3}).c_str());
 
+    return t;
+
 
 }
 bool surface::validate_triangle(int a, int b, int c)
 {
-//    return true;
+    return true;
     auto d1=fdist(pts[a],pts[b]);
     auto d2=fdist(pts[a],pts[c]);
     auto d3=fdist(pts[b],pts[c]);
@@ -304,7 +319,7 @@ int surface::find_nearest(const point& pt, const std::set<int> &ps)
     for(auto& p:ps)
     {
         auto d=fdist(pt,pts[p]);
-        if(d<min)
+        if(d<min && line_len_ok(d))
         {
             min=d;
             sel=p;
@@ -446,7 +461,163 @@ void surface::link_neighbours2(const REF_getter<figure>&f)
     }
     printf("fig %d p.neighbours.size()==2 cnt %d\n", f->id,cnt);
 }
+real surface::angle_between_3_points(int root,int a, int b)
+{
+    auto& p_root=pts[root];
+    auto &p_a=pts[a];
+    auto &p_b=pts[b];
+    return Angle::angle(p_a-p_root,p_b-p_root);
+}
+point surface::cross_between_3_points(int root,int a, int b)
+{
+    auto& p_root=pts[root];
+    auto &p_a=pts[a];
+    auto &p_b=pts[b];
+    return cross(p_a-p_root,p_b-p_root);
+}
+#define MAX_SUM_ANGLE_TRIANGLES 220
+void surface::proceed_on_angle_between_rebras(int p0, std::set<int>& unlinked_points,std::set<int>& active_points)
+{
+    auto& pi0=pointInfos[p0];
+    /// берем ребра, у которых треугольник есть только с одной стороны
+    auto notfilled=pi0.not_filles_rebras();
 
+    if(notfilled.size()==2)
+    {
+        /// их количество должно быть для точки ровно 2, чтобы точка была на границе заполнения
+        auto r2=*notfilled.begin();
+        auto r3=*notfilled.rbegin();
+        /// берем точки ребер и вычищаем из них точку p0 тем самым получаем граничные точки p2,p3 с которым соседствует точка p0
+        auto s2=r2->points;
+        auto s3=r3->points;
+        s2.erase(p0);
+        s3.erase(p0);
+        if(s2.size()!=1 || s3.size()!=1)
+            throw std::runtime_error("if(s2.size()==0 || s3.size()==0)");
+        auto p2=*s2.begin();
+        auto p3=*s3.begin();
+
+        /// далее берем все существующие треугольники, в которых точка p0 является вершиной
+        /// Далее берем сумму всех углов треугольников от точки p0 и если сумма углов треугольников >MAX_SUM_ANGLE_TRIANGLES,
+        /// то считаем, что линия вогнута и мы можем соединить точки p2,p3 и создать новый треугольник p0,p2,p3
+        real sum_angles=0;
+        for(auto&t: pi0.triangles)
+        {
+//            printf("tri points %s\n", dump_set_int(t->points).c_str());
+            auto ps=t->points;
+            ps.erase(p0);
+            if(ps.size()!=2)
+                throw std::runtime_error("if(ps.size()!=2) "+dump_set_int(ps));
+
+            int a=*ps.begin();
+            int b=*ps.rbegin();
+            sum_angles+=angle_between_3_points(p0,a,b);
+        }
+        if(sum_angles>MAX_SUM_ANGLE_TRIANGLES)
+        {
+            proceed_tiangle(p0,p2,p3);
+            /// удаляем p0 из active_points поскольку она перестала быть граничной.
+            active_points.erase(p0);
+            return;
+        }
+        //// add unlinked point to both rebras
+        auto center2=(pts[p0]+pts[p2])/2;
+        auto center3=(pts[p0]+pts[p3])/2;
+        auto p22_nearest=find_nearest(center2,unlinked_points);
+        auto p33_nearest=find_nearest(center3,unlinked_points);
+
+
+        /// если p22_nearest и p33_nearest совпадают, то строим все равно 2 треугольника и потом убираем ее из анлинкед поинтс
+        ///
+        /// берем точку, оппозитную ребру {p0,p2}, она одна, поскольку ребро не заполнено с обеих сторон
+        if(p22_nearest!=-1)
+        {
+            if(r2->opposize_pts.size()!=1)
+                throw std::runtime_error("if(r2->opposize_pts.size()!=1)");
+            int p_opp_r2=*r2->opposize_pts.begin();
+
+            /// вычисляем нормали к плоскостям {p2->p22_nearest,p2->p0} и к {p2->p0, p2->p_opp_r2}
+            /// они сонаправлены и угол между ними должен быть < 90град
+
+            auto normal2=cross_between_3_points(p2, p22_nearest,p0);
+            auto normalB2=cross_between_3_points(p2,p0,p_opp_r2);
+            if(Angle::angle(normal2,normalB2)<90)
+            {
+                proceed_tiangle(p2,p0,p22_nearest);
+                unlinked_points.erase(p22_nearest);
+                active_points.insert(p22_nearest);
+            }
+        }
+
+        if(p33_nearest!=-1){
+            /// тоже самое с другой стороной
+            if(r3->opposize_pts.size()!=1)
+                throw std::runtime_error("if(r2->opposize_pts.size()!=1)");
+            int p_opp_r3=*r3->opposize_pts.begin();
+
+            /// вычисляем нормали к плоскостям {p3->p33_nearest,p3->p0} и к {p3->p0, p3->p_opp_r3}
+            /// они сонаправлены и угол между ними должен быть < 90град
+
+            auto normal3=cross_between_3_points(p3, p33_nearest,p0);
+            auto normalB3=cross_between_3_points(p3,p0,p_opp_r3);
+            if(Angle::angle(normal3,normalB3)<90)
+            {
+                proceed_tiangle(p3,p0,p33_nearest);
+                unlinked_points.erase(p33_nearest);
+                active_points.insert(p33_nearest);
+            }
+
+        }
+        /// если ближайшие точки не удовлетворяют условию, то оставляем их в unlinked_points,  надеясь, что их используют другие ребра
+
+        /// в случае совпадения p22_nearest и p33_nearest p0 попадает внутрь закрашенного региона, поэтому удаляем ее из active_points
+        if(pi0.not_filles_rebras().size()==0)
+        {
+            active_points.erase(p0);
+        }
+
+        /////////////////////
+    }
+}
+void surface::flood()
+{
+    std::set<int> unlinked_points;
+    std::set<int> active_points;
+    std::set<REF_getter<triangle> > active_triangles;
+    for(int i=0;i<pts.size();i++)
+    {
+        unlinked_points.insert(i);
+    }
+    /// make first triangle
+    if(unlinked_points.empty())
+        throw std::runtime_error("if(unlinked_points.empty()) 1");
+    int p0=*unlinked_points.begin();
+    unlinked_points.erase(p0);
+    if(unlinked_points.empty())
+        throw std::runtime_error("if(unlinked_points.empty()) 2");
+    int p2=find_nearest(pts[p0],unlinked_points);
+    unlinked_points.erase(p2);
+    if(unlinked_points.empty())
+        throw std::runtime_error("if(unlinked_points.empty()) 3");
+    int p3=find_nearest(pts[p0],unlinked_points);
+    unlinked_points.erase(p3);
+
+    auto t=proceed_tiangle(p0,p2,p3);
+    active_points.insert({p0,p2,p3});
+    active_triangles.insert(t);
+//////////////// end 1st triangle
+    for(int i=0;i<200;i++)
+    {
+        auto a=active_points;
+        for(auto& p:a)
+        {
+            proceed_on_angle_between_rebras(p,unlinked_points,active_points);
+        }
+    }
+
+
+
+}
 //    return n_result;
 //}
 void surface::run(const std::string &fn_in, const std::string& fn_out)
@@ -463,14 +634,15 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     pointInfos.resize(pts.size());
 
     printf("max line %lf\n",picture_size/MAX_N);
-    step1_split_to_pairs();
-    connect_unlinked_points();
-    supress_figures();
-    for(int i=0;i<50;i++)
-    {
-    for(auto& f:all_figures)
-        link_neighbours2(f.second);
-    }
+    flood();
+//    step1_split_to_pairs();
+//    connect_unlinked_points();
+//    supress_figures();
+//    for(int i=0;i<50;i++)
+//    {
+//    for(auto& f:all_figures)
+//        link_neighbours2(f.second);
+//    }
 
 printf("figure_count %d\n",all_figures.size());
 

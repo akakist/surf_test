@@ -17,6 +17,7 @@ enum ABLE {
 };
 #define _FL_ (std::string)" "+  __FILE__ +" "+std::to_string(__LINE__)
 
+
 struct rebro_container:public Refcountable
 {
     std::set<int> points;
@@ -51,6 +52,31 @@ struct rebro_container:public Refcountable
     }
 
 };
+struct triangle: public Refcountable
+{
+    int id;
+    std::set<int> points;
+    point normal;
+    std::set<REF_getter<rebro_container> > rebras;
+    std::set<REF_getter<triangle>> neigbours;
+    triangle(const std::set<int> & pt)
+    {
+        if(pt.size()!=3)
+            throw std::runtime_error("if(pt.size()!=3)");
+        points=pt;
+    }
+    std::set<REF_getter<rebro_container>> active_borders()
+    {
+        std::set<REF_getter<rebro_container>> ret;
+        for(auto& r: rebras)
+        {
+            if(r->opposize_pts.size()==1)
+                ret.insert(r);
+            return ret;
+        }
+
+    }
+};
 struct figure: public Refcountable
 {
     figure(int _id):id(_id) {}
@@ -69,6 +95,8 @@ struct pointInfo
 {
     pointInfo():figure_(nullptr) {}
     std::map<std::set<int>,REF_getter<rebro_container>> rebras;
+
+    std::set<REF_getter<triangle>> triangles;
 
     std::set<int> neighbours;
     REF_getter<figure> figure_;
@@ -150,11 +178,19 @@ struct surface
 //    void link_neighbours(int p0);
     void step1_split_to_pairs();
     void link_neighbours2(const REF_getter<figure>&f);
-    void proceed_tiangle(int p0, int p2, int p3);
+    REF_getter<triangle> proceed_tiangle(int p0, int p2, int p3);
     bool validate_triangle(int a, int b, int c);
     int find_nearest(const point& p, const std::set<int> &ps);
+    void flood();
+    void proceed_on_angle_between_rebras(int p0, std::set<int> &unlinked_points, std::set<int> &active_points);
+    real angle_between_3_points(int root, int a, int b);
+    point cross_between_3_points(int root,int a, int b);
 
 
+
+
+
+    std::map<std::set<int>,REF_getter<triangle> > all_triangles;
 
 
 
