@@ -11,7 +11,6 @@
 #include <json/json.h>
 //struct point_p;
 
-
 struct rebro_container:public Refcountable
 {
     std::set<int> points;
@@ -104,21 +103,20 @@ struct surface
     /// если не может, то выбрасываем найденную в unlinked_points точку
     std::set<int> linked_points;
 
-
     REF_getter<triangle> proceed_tiangle(int p0, int p2, int p3);
     int find_nearest(const point& p, const std::set<int> &ps);
     void flood();
-    void proceed_on_point_between_rebras(int p0);
+    void proceed_add_new_point_between_rebras(int p0);
+    int proceed_connection_between_tops(int p0);
+    void recalc_active_points();
+
     real angle_between_3_points(int root, int a, int b);
     point cross_between_3_points(int root,int a, int b);
     bool triangle_can_be_added(int p0, int p2, int pnearest, int p_opposite);
     int find_nearest_which_can_be_added(const point& pt, int p0, int p2, int p_opposite);
 
-
-
     void load_points(const std::string& fn);
     void run(const std::string &fn, const std::string &fn_out);
-
 
     REF_getter<rebro_container> getRebroOrCreate(const std::set<int>& s, const char* comment);
 
