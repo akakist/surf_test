@@ -4,10 +4,10 @@
 #include <iostream>
 #include <deque>
 #include <json/json.h>
-#define MAX_N 20
+#define MAX_N 10
 #define MIN_SUM_ANGLE_TRIANGLES 200
 #define MAX_SUM_ANGLE_TRIANGLES (360-30)
-#define MAX_ANGLE_BETWEEN_NORMALES 180
+#define MAX_ANGLE_BETWEEN_NORMALES 90
 
 point cross(const point& a,const point & v)
 {
@@ -37,10 +37,10 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     auto d02=fdist(pts[p0],pts[p2]);
     auto d03=fdist(pts[p0],pts[p3]);
     auto d23=fdist(pts[p2],pts[p3]);
-    auto min=std::min(d02,std::min(d03,d23));
+//    auto min=std::min(d02,std::min(d03,d23));
     auto max=std::max(d02,std::max(d03,d23));
-//    if(max/min>4)
-//        return nullptr;
+    if(!line_len_ok(max))
+        return nullptr;
 
     auto r02=getRebroOrCreate({p0,p2},"link_neighbours2");
     auto r03=getRebroOrCreate({p0,p3},"link_neighbours2");
