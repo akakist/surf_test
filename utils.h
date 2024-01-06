@@ -43,4 +43,7 @@ inline real fdist(const point& a, const point&b)
     return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) ;
 }
 
+std::string dump_set_int(const std::set<int> &s);
+
+
 #endif // UTILS_H

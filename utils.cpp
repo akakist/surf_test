@@ -84,3 +84,12 @@ std::vector<std::string> splitString(const char *seps, const std::string & src, 
     }
     return res;
 }
+std::string dump_set_int(const std::set<int> &s)
+{
+    std::string out;
+    for(auto& z:s)
+    {
+        out+=std::to_string(z)+" ";
+    }
+    return out;
+}

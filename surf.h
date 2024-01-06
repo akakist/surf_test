@@ -90,7 +90,6 @@ struct surface
     /// все закрашенные треугольники, которые мы выводим в obj mesh
     std::set<std::set<int> > triangles;
     real picture_size;
-    std::map<std::set<int>,REF_getter<triangle> > all_triangles;
 
     /// не связанные (свободные точки)
     std::set<int> unlinked_points;
@@ -106,7 +105,7 @@ struct surface
     REF_getter<triangle> proceed_tiangle(int p0, int p2, int p3);
     int find_nearest(const point& p, const std::set<int> &ps);
     void flood();
-    void proceed_add_new_point_between_rebras(int p0);
+    int proceed_add_new_point_between_rebras(int p0);
     int proceed_connection_between_tops(int p0);
 
     real angle_between_3_points(int root, int a, int b);
