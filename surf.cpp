@@ -4,7 +4,10 @@
 #include <iostream>
 #include <deque>
 #include <json/json.h>
-#define MAX_N 20
+#define MAX_N 10
+#define MAX_SUM_ANGLE_TRIANGLES 250
+#define MAX_ANGLE_BETWEEN_NORMALES 120
+
 point cross(const point& a,const point & v)
 {
   return point(a.y*v.z - a.z*v.y, a.z*v.x - a.x*v.z, a.x*v.y - a.y*v.x);
@@ -88,7 +91,6 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 
     REF_getter<triangle> t=new triangle({p0,p2,p3});
     t->rebras.insert({r02,r03,r23});
-    t->normal=cross(pts[p2]-pts[p0],pts[p3]-pts[p0]);
     all_triangles.insert({t->points,t});
 
     pi0.triangles.insert(t);
@@ -165,7 +167,6 @@ point surface::cross_between_3_points(int root,int a, int b)
     auto &p_b=pts[b];
     return cross(p_a-p_root,p_b-p_root);
 }
-#define MAX_SUM_ANGLE_TRIANGLES 220
 bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposite)
 {
 
@@ -175,14 +176,14 @@ bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposit
     auto normal2=cross_between_3_points(p2, p_nearest,p0);
     auto normalB2=cross_between_3_points(p2,p0,p_opposite);
     auto a=Angle::angle(normal2,normalB2);
-    if(a<90)
+    if(a<MAX_ANGLE_BETWEEN_NORMALES)
     {
         return true;
     }
     return false;
 
 }
-void surface::proceed_on_angle_between_rebras(int p0, std::set<int>& unlinked_points,std::set<int>& active_points)
+void surface::proceed_on_point_between_rebras(int p0, std::set<int>& unlinked_points,std::set<int>& active_points)
 {
     auto& pi0=pointInfos[p0];
     /// берем ребра, у которых треугольник есть только с одной стороны
@@ -245,27 +246,16 @@ void surface::proceed_on_angle_between_rebras(int p0, std::set<int>& unlinked_po
         /// берем точку, оппозитную ребру {p0,p2}, она одна, поскольку ребро не заполнено с обеих сторон
         if(p22_nearest!=-1)
         {
-
-
-            {
                 proceed_tiangle(p2,p0,p22_nearest);
                 unlinked_points.erase(p22_nearest);
                 active_points.insert(p22_nearest);
-            }
         }
 
         if(p33_nearest!=-1){
             /// тоже самое с другой стороной
-            if(r3->opposize_pts.size()!=1)
-                throw std::runtime_error("if(r2->opposize_pts.size()!=1)");
-
-
-            {
                 proceed_tiangle(p3,p0,p33_nearest);
                 unlinked_points.erase(p33_nearest);
                 active_points.insert(p33_nearest);
-            }
-
         }
         /// если ближайшие точки не удовлетворяют условию, то оставляем их в unlinked_points,  надеясь, что их используют другие ребра
 
@@ -305,12 +295,12 @@ void surface::flood()
     active_points.insert({p0,p2,p3});
     active_triangles.insert(t);
 //////////////// end 1st triangle
-    for(int i=0;i<200;i++)
+    for(int i=0;i<500;i++)
     {
         auto a=active_points;
         for(auto& p:a)
         {
-            proceed_on_angle_between_rebras(p,unlinked_points,active_points);
+            proceed_on_point_between_rebras(p,unlinked_points,active_points);
         }
     }
 
@@ -334,21 +324,12 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
 
     printf("max line %lf\n",picture_size/MAX_N);
     flood();
-//    step1_split_to_pairs();
-//    connect_unlinked_points();
-//    supress_figures();
-//    for(int i=0;i<50;i++)
-//    {
-//    for(auto& f:all_figures)
-//        link_neighbours2(f.second);
-//    }
 
 
     printf("all splitted to triangles\n");
-//    pointInfo _pi1=pointInfos[p1];
 
     printf("triangles %d\n",triangles.size());
-    printf("all rebvras %d\n",all_rebras.size());
+    printf("all rebras %d\n",all_rebras.size());
 
     std::map<int,int> opps_for_rebra;
     std::map<const char*,int> byComments;
@@ -365,12 +346,7 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     {
         printf("byComments %s %d\n",z.first,z.second);
     }
-//    for(auto& z: border_rebras)
-//    {
-//        printf("border_rebras %d %d\n",z.first,z.second);
-//    }
 
-    std::deque<std::set<int> > added_tri;
     /// connect points with 2 neigbours
 
     std::map<int,int> cnt;

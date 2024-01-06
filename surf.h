@@ -38,7 +38,6 @@ struct triangle: public Refcountable
 {
     int id;
     std::set<int> points;
-    point normal;
     std::set<REF_getter<rebro_container> > rebras;
     std::set<REF_getter<triangle>> neigbours;
     triangle(const std::set<int> & pt)
@@ -95,7 +94,7 @@ struct surface
     bool validate_triangle(int a, int b, int c);
     int find_nearest(const point& p, const std::set<int> &ps);
     void flood();
-    void proceed_on_angle_between_rebras(int p0, std::set<int> &unlinked_points, std::set<int> &active_points);
+    void proceed_on_point_between_rebras(int p0, std::set<int> &unlinked_points, std::set<int> &active_points);
     real angle_between_3_points(int root, int a, int b);
     point cross_between_3_points(int root,int a, int b);
     bool triangle_can_be_added(int p0, int p2, int pnearest, int p_opposite);
