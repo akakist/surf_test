@@ -103,21 +103,10 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     else
         throw std::runtime_error("2 triangle already inserted %s "+dump_set_int({p0,p2,p3}));
 
+    linked_points.insert({p0,p2,p3});
+
     return t;
 
-
-}
-bool surface::validate_triangle(int a, int b, int c)
-{
-    return true;
-    auto d1=fdist(pts[a],pts[b]);
-    auto d2=fdist(pts[a],pts[c]);
-    auto d3=fdist(pts[b],pts[c]);
-    auto max=std::max(d1, std::max(d2,d3));
-    auto min=std::min(d1, std::max(d2,d3));
-    if(max>min*10)
-        return false;
-    return true;
 
 }
 int surface::find_nearest(const point& pt, const std::set<int> &ps)
@@ -136,21 +125,56 @@ int surface::find_nearest(const point& pt, const std::set<int> &ps)
     }
     return sel;
 }
-int surface::find_nearest_which_can_be_added(const point& pt, const std::set<int> &unlinked_points, int p0,int p2, int p_opposite)
+int surface::find_nearest_which_can_be_added(const point& pt,  int p0,int p2, int p_opposite)
 {
 //    printf("find_nearest sz %d\n",ps.size());
     auto min=std::numeric_limits<real>::max();
-    int sel=-1;
+    int sel_unlinked=-1;
     for(auto& p:unlinked_points)
     {
         auto d=fdist(pt,pts[p]);
+//        bool
+
         if(d<min && line_len_ok(d) && triangle_can_be_added(p0,p2,p,p_opposite))
         {
             min=d;
-            sel=p;
+            sel_unlinked=p;
         }
     }
-    return sel;
+
+    if(sel_unlinked!=-1)
+    {
+        if(min>picture_size/(MAX_N*3))
+        {
+            min=std::numeric_limits<real>::max();
+            int sel_linked=-1;
+            for(auto& p:linked_points)
+            {
+                auto d=fdist(pts[sel_unlinked],pts[p]);
+                if(d<min)
+                {
+                    sel_linked=p;
+                    min=d;
+                }
+
+            }
+            if(sel_linked!=-1)
+            {
+                auto pi_linked=pointInfos[sel_linked];
+                auto z=pi_linked.not_filles_rebras();
+                auto rs=pi_linked.rebras;
+                if(rs.size() && z.size()==0)
+                {
+                   unlinked_points.erase(sel_linked);
+                   return -1;
+                }
+            }
+        }
+    }
+
+    return sel_unlinked;
+
+
 }
 
 real surface::angle_between_3_points(int root,int a, int b)
@@ -183,7 +207,7 @@ bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposit
     return false;
 
 }
-void surface::proceed_on_point_between_rebras(int p0, std::set<int>& unlinked_points,std::set<int>& active_points)
+void surface::proceed_on_point_between_rebras(int p0)
 {
     auto& pi0=pointInfos[p0];
     /// берем ребра, у которых треугольник есть только с одной стороны
@@ -237,8 +261,8 @@ void surface::proceed_on_point_between_rebras(int p0, std::set<int>& unlinked_po
         int p_opp_r2=*r2->opposize_pts.begin();
         int p_opp_r3=*r2->opposize_pts.begin();
 
-        auto p22_nearest=find_nearest_which_can_be_added(center2,unlinked_points,p0,p2,p_opp_r2);
-        auto p33_nearest=find_nearest_which_can_be_added(center3,unlinked_points,p0,p3,p_opp_r3);
+        auto p22_nearest=find_nearest_which_can_be_added(center2,p0,p2,p_opp_r2);
+        auto p33_nearest=find_nearest_which_can_be_added(center3,p0,p3,p_opp_r3);
 
 
         /// если p22_nearest и p33_nearest совпадают, то строим все равно 2 треугольника и потом убираем ее из анлинкед поинтс
@@ -270,9 +294,6 @@ void surface::proceed_on_point_between_rebras(int p0, std::set<int>& unlinked_po
 }
 void surface::flood()
 {
-    std::set<int> unlinked_points;
-    std::set<int> active_points;
-    std::set<REF_getter<triangle> > active_triangles;
     for(int i=0;i<pts.size();i++)
     {
         unlinked_points.insert(i);
@@ -293,14 +314,14 @@ void surface::flood()
 
     auto t=proceed_tiangle(p0,p2,p3);
     active_points.insert({p0,p2,p3});
-    active_triangles.insert(t);
-//////////////// end 1st triangle
+
+    //////////////// end 1st triangle
     for(int i=0;i<500;i++)
     {
         auto a=active_points;
         for(auto& p:a)
         {
-            proceed_on_point_between_rebras(p,unlinked_points,active_points);
+            proceed_on_point_between_rebras(p);
         }
     }
 

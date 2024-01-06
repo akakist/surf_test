@@ -87,21 +87,34 @@ struct surface
     std::vector<point > pts;
     std::vector<pointInfo> pointInfos;
     std::map<std::set<int>,REF_getter<rebro_container> > all_rebras;
+
+    /// все закрашенные треугольники, которые мы выводим в obj mesh
     std::set<std::set<int> > triangles;
     real picture_size;
+    std::map<std::set<int>,REF_getter<triangle> > all_triangles;
+
+    /// не связанные (свободные точки)
+    std::set<int> unlinked_points;
+
+    /// точки на границе, которые могут быть соединены
+    std::set<int> active_points;
+
+    /// все связанные точки, будет использоваться для фильтрации unlinked_points
+    /// при нахождении в unlinked_points ищем ближайшее в linked_points, если точка может соединяться, то ок,
+    /// если не может, то выбрасываем найденную в unlinked_points точку
+    std::set<int> linked_points;
+
 
     REF_getter<triangle> proceed_tiangle(int p0, int p2, int p3);
-    bool validate_triangle(int a, int b, int c);
     int find_nearest(const point& p, const std::set<int> &ps);
     void flood();
-    void proceed_on_point_between_rebras(int p0, std::set<int> &unlinked_points, std::set<int> &active_points);
+    void proceed_on_point_between_rebras(int p0);
     real angle_between_3_points(int root, int a, int b);
     point cross_between_3_points(int root,int a, int b);
     bool triangle_can_be_added(int p0, int p2, int pnearest, int p_opposite);
-    int find_nearest_which_can_be_added(const point& pt, const std::set<int> &unlinked_points, int p0, int p2, int p_opposite);
+    int find_nearest_which_can_be_added(const point& pt, int p0, int p2, int p_opposite);
 
 
-    std::map<std::set<int>,REF_getter<triangle> > all_triangles;
 
     void load_points(const std::string& fn);
     void run(const std::string &fn, const std::string &fn_out);
