@@ -22,7 +22,6 @@ int main(int argc, char *argv[])
     {
         infile="/Users/sergejbelalov/saddle-nodes.xyz";
         outfile="sphere.xyz";
-//        throw std::runtime_error("infile or outfile not specified");
     }
     surface s;
     s.run(infile,outfile);

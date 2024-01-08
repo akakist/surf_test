@@ -34,10 +34,7 @@ inline real qw(real a)
 {
     return a*a;
 }
-//inline long dist(const point& a, const point&b)
-//{
-//    return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) * double(D2Lmul);
-//}
+
 inline real fdist(const point& a, const point&b)
 {
     return sqrt(qw(a.x-b.x)+qw(a.y-b.y)+qw(a.z-b.z)) ;

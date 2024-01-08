@@ -82,24 +82,4 @@ namespace Angle
     }
 }
 
-/*
-#include <cmath>
-
-
-
-int main()
-{
-    Vec3 v1, v2;
-
-    v1.x = 203;
-    v1.y = 355;
-    v1.z = 922;
-
-    v2.x = 6;
-    v2.y = 13;
-    v2.z = 198;
-
-    float angle = std::acos(dot(v1,v2)/(mag(v1)*mag(v2)));
-}
-*/
 #endif // POINT_H
