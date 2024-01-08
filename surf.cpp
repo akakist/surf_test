@@ -4,9 +4,15 @@
 #include <iostream>
 #include <deque>
 #include <json/json.h>
+/// используется для вычисления максимальной длины ребра
 #define MAX_N 10
+
+/// минимальмная сумма прилежащих точке готовых углов треугольников,
+/// чтобы понять, что угол в точке является вогнутым
 #define MIN_SUM_ANGLE_TRIANGLES 210
-#define MAX_ANGLE_BETWEEN_NORMALES 40
+
+/// максимальный угол между нормалями нового треугольника и старого при добавлении новой точки
+#define MAX_ANGLE_BETWEEN_NORMALES 50
 
 /// векторное произведение
 point cross(const point& a,const point & v)
@@ -17,8 +23,7 @@ point cross(const point& a,const point & v)
 /// проверка на максимальную длину линии
 bool surface::line_len_ok(real len)
 {
-
-    return len<picture_size/MAX_N;
+    return len<avg_dist*MAX_N;
 }
 
 /// вставка треугольника и коррекция всех необходимых контейнеров
@@ -40,9 +45,9 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     }
 
     /// берем ребра
-    auto r02=getRebroOrCreate({p0,p2},"link_neighbours2");
-    auto r03=getRebroOrCreate({p0,p3},"link_neighbours2");
-    auto r23=getRebroOrCreate({p2,p3},"link_neighbours2");
+    auto r02=get_edge_or_create({p0,p2},"link_neighbours2");
+    auto r03=get_edge_or_create({p0,p3},"link_neighbours2");
+    auto r23=get_edge_or_create({p2,p3},"link_neighbours2");
 
     if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)
     {
@@ -50,12 +55,12 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
         return nullptr;
     }
     /// добавляем к точкам ребра
-    pi0.add_to_rebras(r02);
-    pi0.add_to_rebras(r03);
-    pi2.add_to_rebras(r02);
-    pi2.add_to_rebras(r23);
-    pi3.add_to_rebras(r03);
-    pi3.add_to_rebras(r23);
+    pi0.add_to_edges(r02);
+    pi0.add_to_edges(r03);
+    pi2.add_to_edges(r02);
+    pi2.add_to_edges(r23);
+    pi3.add_to_edges(r03);
+    pi3.add_to_edges(r23);
 
     /// добавляем точки к соседям точки
     pi0.add_neighbours({p2,p3});
@@ -87,7 +92,7 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     /// создаем треугольник
     REF_getter<triangle> t=new triangle({p0,p2,p3});
     /// к треугольнику добавляем ребра
-    t->rebras.insert({r02,r03,r23});
+    t->edges.insert({r02,r03,r23});
 
     /// дибавляем к точкам треугольник
     pi0.triangles.insert(t);
@@ -141,6 +146,7 @@ int surface::find_nearest_which_can_be_added(const point& pt,  int p0,int p2, in
             sel_unlinked=p;
         }
     }
+
     return sel_unlinked;
 
 }
@@ -170,7 +176,7 @@ bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposit
 
     /// вычисляем нормали к плоскостям {p2->p22_nearest,p2->p0} и к {p2->p0, p2->p_opp_r2}
     /// они сонаправлены и угол между ними должен быть < 90град
-
+return true;
     auto normal2=cross_between_3_points(p2, p_nearest,p0);
     auto normalB2=cross_between_3_points(p2,p0,p_opposite);
     auto a=Angle::angle(normal2,normalB2);
@@ -243,15 +249,17 @@ int surface::proceed_connection_between_tops(int p0)
 
 /// если точка граничит с двумя незаполненными ребрами (граничит с одним треугольником),
 /// то добавляем к ним новую ближайшую точку.
-int surface::proceed_add_new_point_between_rebras(int p0)
+void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& interested)
 {
     auto& pi0=pointInfos[p0];
     /// берем ребра, у которых треугольник есть только с одной стороны
     auto notfilled=pi0.not_filles_rebras();
 
-    int ret=0;
+    std::vector<int> ret;
     if(notfilled.size()!=2)
-        throw std::runtime_error("if(notfilled.size()!=2) ");
+    {
+                throw std::runtime_error("if(notfilled.size()!=2) ");
+    }
 
         /// их количество должно быть для точки ровно 2, чтобы точка была на границе заполнения
         auto r2=*notfilled.begin();
@@ -288,7 +296,7 @@ int surface::proceed_add_new_point_between_rebras(int p0)
             {
                 unlinked_points.erase(p22_nearest);
                 active_points.insert(p22_nearest);
-                ret++;
+                interested.push_back(p2);
             }
         }
         if(p33_nearest!=-1) {
@@ -297,7 +305,7 @@ int surface::proceed_add_new_point_between_rebras(int p0)
             {
                 unlinked_points.erase(p33_nearest);
                 active_points.insert(p33_nearest);
-                ret++;
+                interested.push_back(p2);
             }
         }
 
@@ -310,7 +318,6 @@ int surface::proceed_add_new_point_between_rebras(int p0)
         }
 
         /////////////////////
-        return ret;
 }
 void surface::flood()
 {
@@ -347,33 +354,29 @@ void surface::flood()
         /// затем соединяем ребрами острые углы и так далее, пока они соединяются
         auto a=active_points;
 
-        int new_points=0;
+//        int new_points=0;
+        std::deque<int> interested;
         for(auto& p:a)
         {
-            new_points+=proceed_add_new_point_between_rebras(p);
+            proceed_add_new_point_between_edges(p,interested);
+//            proceed_connection_between_tops(p);
+        }
+        for(auto& p:interested)
+        {
             proceed_connection_between_tops(p);
         }
-//        for(auto& p:a)
-//        {
-//            proceed_connection_between_tops(p);
-//        }
-
-        printf("new_points %d\n",new_points);
-        if(new_points==0)
-            cond=false;
-        else
+        int connected=0;
+        if(interested.size()==0)
         {
-            while(true)
+            for(auto& p:a)
             {
-                int new_connections=0;
-                for(auto& p:a)
-                {
-                    new_connections+=proceed_connection_between_tops(p);
-                }
-                if(new_connections==0)
-                    break;
+                connected+=proceed_connection_between_tops(p);
             }
         }
+        if(interested.size()==0 && connected==0)
+            cond=false;
+
+
     }
 
 }
@@ -385,6 +388,8 @@ void surface::run(const std::string &fn_in, const std::string& fn_out)
     load_points(fn_in);
     calc_picture_size();
     pointInfos.resize(pts.size());
+
+    avg_dist=picture_size/sqrt(pts.size());
 
     std::cout << "Calculate triangles" <<std::endl;
 
@@ -444,7 +449,7 @@ void surface::load_points(const std::string& fn)
     return;
 }
 
-REF_getter<rebro_container> surface::getRebroOrCreate(const std::set<int>& s, const char *comment)
+REF_getter<edge_container> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
 {
     point center= {0,0,0};
     for(auto& ss:s)
@@ -453,11 +458,11 @@ REF_getter<rebro_container> surface::getRebroOrCreate(const std::set<int>& s, co
     }
     center/=s.size();
 
-    auto i=all_rebras.find(s);
-    if(i==all_rebras.end())
+    auto i=all_edges.find(s);
+    if(i==all_edges.end())
     {
-        REF_getter<rebro_container >rebro = new rebro_container(s,center, comment);
-        all_rebras.insert({s,rebro});
+        REF_getter<edge_container >rebro = new edge_container(s,center, comment);
+        all_edges.insert({s,rebro});
 
         return rebro;
     }
