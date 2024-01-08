@@ -7,7 +7,6 @@
 #include "REF.h"
 #include <deque>
 #include <string.h>
-#include <json/json.h>
 
 struct edge_container:public Refcountable
 {
