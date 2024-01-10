@@ -450,17 +450,11 @@ void surface::load_points(const std::string& fn)
 
 REF_getter<edge_container> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
 {
-    point center= {0,0,0};
-    for(auto& ss:s)
-    {
-        center+=pts[ss];
-    }
-    center/=s.size();
 
     auto i=all_edges.find(s);
     if(i==all_edges.end())
     {
-        REF_getter<edge_container >rebro = new edge_container(s,center, comment);
+        REF_getter<edge_container >rebro = new edge_container(s, comment);
         all_edges.insert({s,rebro});
 
         return rebro;

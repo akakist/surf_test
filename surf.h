@@ -16,7 +16,6 @@ struct edge_container:public Refcountable
     /// Их всего может быть 2, если одна, то к ребру можно еще присоединять треугольник
     std::set<int> opposize_pts;
     const char *comment=nullptr;
-    point center;
 
     void add_opposite_pts(int p)
     {
@@ -27,7 +26,7 @@ struct edge_container:public Refcountable
         }
     }
     edge_container() {}
-    edge_container(const std::set<int>&s,const point& center_, const char* comm):points(s), comment(comm), center(center_) {
+    edge_container(const std::set<int>&s, const char* comm):points(s), comment(comm) {
         if(s.size()!=2)
             throw std::runtime_error("if(s.size()!=2)");
 
