@@ -27,7 +27,7 @@ bool surface::line_len_ok(real len)
 
 /// вставка треугольника и коррекция всех необходимых контейнеров
 /// в случае ошибки возвращаем нулл
-REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
+std::shared_ptr<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 {
     auto &pi0=pointInfos[p0];
     auto &pi2=pointInfos[p2];
@@ -89,7 +89,7 @@ REF_getter<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     }
 
     /// создаем треугольник
-    REF_getter<triangle> t=new triangle({p0,p2,p3});
+    std::shared_ptr<triangle> t(new triangle({p0,p2,p3}));
     /// к треугольнику добавляем ребра
     t->edges.insert({r02,r03,r23});
 
@@ -230,7 +230,7 @@ int surface::proceed_connection_between_tops(int p0)
         {
             auto t=proceed_tiangle(p0,p2,p3);
             /// удаляем p0 из active_points поскольку она перестала быть граничной.
-            if(t.valid())
+            if(t.get()!=nullptr)
             {
                 active_points.erase(p0);
 
@@ -291,7 +291,7 @@ void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& inter
         /// берем точку, оппозитную ребру {p0,p2}, она одна, поскольку ребро не заполнено с обеих сторон
         if(p22_nearest!=-1)
         {
-            if(proceed_tiangle(p2,p0,p22_nearest).valid())
+            if(proceed_tiangle(p2,p0,p22_nearest).get()!=nullptr)
             {
                 unlinked_points.erase(p22_nearest);
                 active_points.insert(p22_nearest);
@@ -300,7 +300,7 @@ void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& inter
         }
         if(p33_nearest!=-1) {
             /// тоже самое с другой стороной
-            if(proceed_tiangle(p3,p0,p33_nearest).valid())
+            if(proceed_tiangle(p3,p0,p33_nearest).get()!=nullptr)
             {
                 unlinked_points.erase(p33_nearest);
                 active_points.insert(p33_nearest);
@@ -340,7 +340,7 @@ void surface::flood()
     unlinked_points.erase(p3);
 
     auto t=proceed_tiangle(p0,p2,p3);
-    if(t.valid())
+    if(t.get()!=nullptr)
     {
         active_points.insert({p0,p2,p3});
     }
@@ -448,13 +448,13 @@ void surface::load_points(const std::string& fn)
     return;
 }
 
-REF_getter<edge_container> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
+std::shared_ptr<edge_container> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
 {
 
     auto i=all_edges.find(s);
     if(i==all_edges.end())
     {
-        REF_getter<edge_container >rebro = new edge_container(s, comment);
+        std::shared_ptr<edge_container >rebro = std::make_shared<edge_container>(s, comment);
         all_edges.insert({s,rebro});
 
         return rebro;

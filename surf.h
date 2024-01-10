@@ -37,8 +37,8 @@ struct triangle: public Refcountable
 {
     int id;
     std::set<int> points;
-    std::set<REF_getter<edge_container> > edges;
-    std::set<REF_getter<triangle>> neigbours;
+    std::set<std::shared_ptr<edge_container> > edges;
+    std::set<std::shared_ptr<triangle>> neigbours;
     triangle(const std::set<int> & pt)
     {
         if(pt.size()!=3)
@@ -50,14 +50,14 @@ struct triangle: public Refcountable
 struct pointInfo
 {
     pointInfo() {}
-    std::map<std::set<int>,REF_getter<edge_container>> edges;
+    std::map<std::set<int>,std::shared_ptr<edge_container>> edges;
 
-    std::set<REF_getter<triangle>> triangles;
+    std::set<std::shared_ptr<triangle>> triangles;
 
     std::set<int> neighbours;
-    std::set<REF_getter<edge_container> > not_filles_rebras()
+    std::set<std::shared_ptr<edge_container> > not_filles_rebras()
     {
-        std::set<REF_getter<edge_container> > ret;
+        std::set<std::shared_ptr<edge_container> > ret;
         for(auto& r:edges)
         {
             if(r.second->opposize_pts.size()<2)
@@ -67,7 +67,7 @@ struct pointInfo
         }
         return ret;
     }
-    void add_to_edges(const REF_getter<edge_container>& r)
+    void add_to_edges(const std::shared_ptr<edge_container>& r)
     {
         edges.insert({r->points,r});
     }
@@ -86,7 +86,7 @@ struct surface
 
     std::vector<point > pts;
     std::vector<pointInfo> pointInfos;
-    std::map<std::set<int>,REF_getter<edge_container> > all_edges;
+    std::map<std::set<int>,std::shared_ptr<edge_container> > all_edges;
 
     /// все закрашенные треугольники, которые мы выводим в obj mesh
     std::set<std::set<int> > triangles;
@@ -107,7 +107,7 @@ struct surface
     real avg_dist;
 
 
-    REF_getter<triangle> proceed_tiangle(int p0, int p2, int p3);
+    std::shared_ptr<triangle> proceed_tiangle(int p0, int p2, int p3);
     int find_nearest(const point& p, const std::set<int> &ps);
     void flood();
     void proceed_add_new_point_between_edges(int p0, std::deque<int> &interested);
@@ -121,7 +121,7 @@ struct surface
     void load_points(const std::string& fn);
     void run(const std::string &fn, const std::string &fn_out);
 
-    REF_getter<edge_container> get_edge_or_create(const std::set<int>& s, const char* comment);
+    std::shared_ptr<edge_container> get_edge_or_create(const std::set<int>& s, const char* comment);
 
     void calc_picture_size();
     bool line_len_ok(real len);
