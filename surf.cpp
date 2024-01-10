@@ -1,10 +1,9 @@
 #include "surf.h"
-#include "utils.h"
 #include <fstream>
 #include <iostream>
 #include <deque>
 /// используется для вычисления максимальной длины ребра
-#define MAX_N 20
+#define MAX_N 15
 
 /// минимальмная сумма прилежащих точке готовых углов треугольников,
 /// чтобы понять, что угол в точке является вогнутым
@@ -14,20 +13,21 @@
 #define MAX_ANGLE_BETWEEN_NORMALES 50
 
 /// векторное произведение
-point cross(const point& a,const point & v)
+Point cross(const Point& a,const Point & v)
 {
-    return point(a.y*v.z - a.z*v.y, a.z*v.x - a.x*v.z, a.x*v.y - a.y*v.x);
+    return Point(a.y*v.z - a.z*v.y, a.z*v.x - a.x*v.z, a.x*v.y - a.y*v.x);
 }
 
 /// проверка на максимальную длину линии
-bool surface::line_len_ok(real len)
+bool surface::line_len_ok(double len)
 {
-    return len<avg_dist*MAX_N;
+//    return true;
+    return len < avg_dist*MAX_N;
 }
 
 /// вставка треугольника и коррекция всех необходимых контейнеров
 /// в случае ошибки возвращаем нулл
-std::shared_ptr<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
+std::shared_ptr<triangle> surface::make_tiangle(int p0, int p2, int p3)
 {
     auto &pi0=pointInfos[p0];
     auto &pi2=pointInfos[p2];
@@ -50,7 +50,6 @@ std::shared_ptr<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 
     if(r02->opposize_pts.size()>1 || r03->opposize_pts.size()>1 || r23->opposize_pts.size()>1)
     {
-        printf("r02 opp %d r03 opp %d r23 opp %d ",r02->opposize_pts.size(),r03->opposize_pts.size(),r23->opposize_pts.size());
         return nullptr;
     }
     /// добавляем к точкам ребра
@@ -89,9 +88,19 @@ std::shared_ptr<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
     }
 
     /// создаем треугольник
+    /// не используем std::make_shared, поскольку он почему-то не может передать в конструктор  std::initializer_list
     std::shared_ptr<triangle> t(new triangle({p0,p2,p3}));
     /// к треугольнику добавляем ребра
     t->edges.insert({r02,r03,r23});
+    t->center=(pts[p0]+pts[p2]+pts[p3])/3.;
+//    surface_pts.push_back((pts[p0]+pts[p2]+pts[p3])/3.);
+//    printf("surface_pts size %d\n",surface_pts.size());
+//    surface_pts.push_back(pts[p0]);
+//    surface_pts.push_back(pts[p2]);
+//    surface_pts.push_back(pts[p3]);
+//    printf("t center %lf %lf %lf\n",t->center.x,t->center.y,t->center.z);
+//    all_triangles.insert({t->id,t});
+
 
     /// дибавляем к точкам треугольник
     pi0.triangles.insert(t);
@@ -113,11 +122,12 @@ std::shared_ptr<triangle> surface::proceed_tiangle(int p0, int p2, int p3)
 
 }
 
-/// нахождение ближайшей точки из сета
-int surface::find_nearest(const point& pt, const std::set<int> &ps)
+
+/// нахождение ближайшей точки из сета, как правило из unlinked_points
+int surface::find_nearest(const Point& pt, const std::set<int> &ps)
 {
 
-    auto min=std::numeric_limits<real>::max();
+    auto min=std::numeric_limits<double>::max();
     int sel=-1;
     for(auto& p:ps)
     {
@@ -130,20 +140,28 @@ int surface::find_nearest(const point& pt, const std::set<int> &ps)
     }
     return sel;
 }
+
+
 /// нахождение ближайшей точки с использованием условия triangle_can_be_added
-int surface::find_nearest_which_can_be_added(const point& pt,  int p0,int p2, int p_opposite)
+int surface::find_nearest_which_can_be_added(const Point& pt,  int p0,int p2, int p_opposite)
 {
-    auto min=std::numeric_limits<real>::max();
+    auto min=std::numeric_limits<double>::max();
     int sel_unlinked=-1;
+    std::set<int> erased_pts;
     for(auto& p:unlinked_points)
     {
         auto d=fdist(pt,pts[p]);
-
-        if(d<min && line_len_ok(d) && triangle_can_be_added(p0,p2,p,p_opposite))
+        if(erased_pts.count(p))
+            continue;
+        if(d<min && line_len_ok(d) && triangle_can_be_added(p0,p2,p,p_opposite,d,erased_pts))
         {
             min=d;
             sel_unlinked=p;
         }
+    }
+    for(auto& p:erased_pts)
+    {
+        unlinked_points.erase(p);
     }
 
     return sel_unlinked;
@@ -152,7 +170,7 @@ int surface::find_nearest_which_can_be_added(const point& pt,  int p0,int p2, in
 
 
 /// угол между векторами из точки root в а и б
-real surface::angle_between_3_points(int root,int a, int b)
+double surface::angle_between_3_points(int root,int a, int b)
 {
     auto& p_root=pts[root];
     auto &p_a=pts[a];
@@ -161,7 +179,7 @@ real surface::angle_between_3_points(int root,int a, int b)
 }
 
 /// векторное произведение векторов из точки root в а и б
-point surface::cross_between_3_points(int root,int a, int b)
+Point surface::cross_between_3_points(int root,int a, int b)
 {
     auto &p_root=pts[root];
     auto &p_a=pts[a];
@@ -170,12 +188,14 @@ point surface::cross_between_3_points(int root,int a, int b)
 }
 
 /// оценка допустимости добавления треугольника по нормалям 2 треугольников p0,p2,p_nearest и p0,p2, p_opposite
-bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposite)
+bool surface::triangle_can_be_added(int p0, int p2, int p_nearest, int p_opposite, double distance, std::set<int>& erased_pts)
 {
 
+    return true;
+
+    /// не используем метод нормалей
     /// вычисляем нормали к плоскостям {p2->p22_nearest,p2->p0} и к {p2->p0, p2->p_opp_r2}
     /// они сонаправлены и угол между ними должен быть < 90град
-return true;
     auto normal2=cross_between_3_points(p2, p_nearest,p0);
     auto normalB2=cross_between_3_points(p2,p0,p_opposite);
     auto a=Angle::angle(normal2,normalB2);
@@ -214,7 +234,7 @@ int surface::proceed_connection_between_tops(int p0)
         /// далее берем все существующие треугольники, в которых точка p0 является вершиной
         /// Далее берем сумму всех углов треугольников от точки p0 и если сумма углов треугольников >MAX_SUM_ANGLE_TRIANGLES,
         /// то считаем, что линия вогнута и мы можем соединить точки p2,p3 и создать новый треугольник p0,p2,p3
-        real sum_angles=0;
+        double sum_angles=0;
         for(auto&t: pi0.triangles)
         {
             auto ps=t->points;
@@ -228,7 +248,7 @@ int surface::proceed_connection_between_tops(int p0)
         }
         if(sum_angles>MIN_SUM_ANGLE_TRIANGLES)
         {
-            auto t=proceed_tiangle(p0,p2,p3);
+            auto t=make_tiangle(p0,p2,p3);
             /// удаляем p0 из active_points поскольку она перестала быть граничной.
             if(t.get()!=nullptr)
             {
@@ -291,7 +311,7 @@ void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& inter
         /// берем точку, оппозитную ребру {p0,p2}, она одна, поскольку ребро не заполнено с обеих сторон
         if(p22_nearest!=-1)
         {
-            if(proceed_tiangle(p2,p0,p22_nearest).get()!=nullptr)
+            if(make_tiangle(p2,p0,p22_nearest).get()!=nullptr)
             {
                 unlinked_points.erase(p22_nearest);
                 active_points.insert(p22_nearest);
@@ -300,7 +320,7 @@ void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& inter
         }
         if(p33_nearest!=-1) {
             /// тоже самое с другой стороной
-            if(proceed_tiangle(p3,p0,p33_nearest).get()!=nullptr)
+            if(make_tiangle(p3,p0,p33_nearest).get()!=nullptr)
             {
                 unlinked_points.erase(p33_nearest);
                 active_points.insert(p33_nearest);
@@ -318,6 +338,8 @@ void surface::proceed_add_new_point_between_edges(int p0, std::deque<int>& inter
 
         /////////////////////
 }
+
+/// главная функция алгоритма заполнения
 void surface::flood()
 {
     /// изначально складываем все точки в контейнер unlinked_points
@@ -339,7 +361,8 @@ void surface::flood()
     int p3=find_nearest(pts[p0],unlinked_points);
     unlinked_points.erase(p3);
 
-    auto t=proceed_tiangle(p0,p2,p3);
+    /// создаем треугольник
+    auto t=make_tiangle(p0,p2,p3);
     if(t.get()!=nullptr)
     {
         active_points.insert({p0,p2,p3});
@@ -353,12 +376,12 @@ void surface::flood()
         /// затем соединяем ребрами острые углы и так далее, пока они соединяются
         auto a=active_points;
 
-//        int new_points=0;
+        /// в ходе заполнения появляются потенциально выпуклые острые углы, которые можно проверить и соединить линией
+        /// их складываем в interested
         std::deque<int> interested;
         for(auto& p:a)
         {
             proceed_add_new_point_between_edges(p,interested);
-//            proceed_connection_between_tops(p);
         }
         for(auto& p:interested)
         {
@@ -435,7 +458,7 @@ void surface::load_points(const std::string& fn)
         auto v=splitString(" ",l,4);
         if(v.size()==4)
         {
-            point p;
+            Point p;
             int id=atoi(v[0].c_str());
             p.x=atof(v[1].c_str());
             p.y=atof(v[2].c_str());
@@ -448,16 +471,16 @@ void surface::load_points(const std::string& fn)
     return;
 }
 
-std::shared_ptr<edge_container> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
+std::shared_ptr<Edge> surface::get_edge_or_create(const std::set<int>& s, const char *comment)
 {
 
     auto i=all_edges.find(s);
     if(i==all_edges.end())
     {
-        std::shared_ptr<edge_container >rebro = std::make_shared<edge_container>(s, comment);
-        all_edges.insert({s,rebro});
+        auto edge = std::make_shared<Edge>(s, comment);
+        all_edges.insert({s,edge});
 
-        return rebro;
+        return edge;
     }
     else {
         return i->second;
@@ -468,8 +491,8 @@ std::shared_ptr<edge_container> surface::get_edge_or_create(const std::set<int>&
 
 void surface::calc_picture_size()
 {
-    point min=pts[0];
-    point max=pts[0];
+    Point min=pts[0];
+    Point max=pts[0];
 
     for(size_t i=0; i<pts.size(); i++)
     {
@@ -484,7 +507,104 @@ void surface::calc_picture_size()
 
     }
 
-    point d=max;
+    Point d=max;
     d.sub(min);
     picture_size=std::max(d.x,std::max(d.y,d.z));
+}
+
+surface::~surface()
+{
+    /// ручная очистка нужна для разрешения коллизий с циклическими ссылками shared_ptr
+    for(auto& p:pointInfos)
+    {
+        p.edges.clear();
+        p.neighbours.clear();
+        p.triangles.clear();
+    }
+    for(auto& e: all_edges)
+    {
+        e.second->opposize_pts.clear();
+        e.second->points.clear();
+    }
+}
+
+std::string loadFile(const std::string& name)
+{
+    std::ifstream t(name);
+    t.seekg(0, std::ios::end);
+    size_t size = t.tellg();
+    std::string buffer(size, ' ');
+    t.seekg(0);
+    t.read(&buffer[0], size);
+    return buffer;
+}
+std::vector<std::string> splitString(const char *seps, const std::string & src, size_t reserve)
+{
+
+    std::vector < std::string> res;
+    res.reserve(reserve);
+    std::set<char>mm;
+    size_t l;
+    l =::strlen(seps);
+    for (unsigned int i = 0; i < l; i++)
+    {
+        mm.insert(seps[i]);
+    }
+    std::string tmp;
+    l = src.size();
+
+    for (unsigned int i = 0; i < l; i++)
+    {
+
+        if (!mm.count(src[i]))
+            tmp += src[i];
+        else
+        {
+            if (tmp.size())
+            {
+                res.push_back(tmp);
+                tmp.clear();
+            }
+        }
+    }
+
+    if (tmp.size())
+    {
+        res.push_back(tmp);
+        tmp.clear();
+    }
+    return res;
+}
+std::string dump_set_int(const std::set<int> &s)
+{
+    std::string out;
+    for(auto& z:s)
+    {
+        out+=std::to_string(z)+" ";
+    }
+    return out;
+}
+
+int main(int argc, const char *argv[])
+{
+
+    std::string infile,outfile;
+    for(int i=1; i<argc-1; i++)
+    {
+        if(std::string(argv[i])=="-i" ||(std::string)argv[i]=="--input")
+            infile=argv[i+1];
+        if((std::string)argv[i]=="-o" ||(std::string)argv[i]=="--output")
+            outfile=argv[i+1];
+    }
+    if(infile.size()==0 || outfile.size()==0)
+    {
+        std::cout << "input/output files not specified, using default pathnames" << std::endl;
+        /// по умолчанию используем фиксированные пути на диске для отладчика
+        infile="/Users/sergejbelalov/saddle-nodes.xyz";
+        outfile="saddle.xyz";
+    }
+    surface s;
+    s.run(infile,outfile);
+
+    return 0;
 }
