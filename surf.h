@@ -1,12 +1,17 @@
 #ifndef SURF_H
 #define SURF_H
+/// define for MSVC
+#define _USE_MATH_DEFINES // for C++
 #include <vector>
 #include <set>
 #include <map>
 #include <deque>
 #include <string.h>
 #include <math.h>
+#include <cmath>
 #include <memory>
+#include <string>
+#include <stdexcept>
 
 std::string loadFile(const std::string& name);
 std::vector<std::string> splitString(const char *seps, const std::string & src, size_t reserve);
