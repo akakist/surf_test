@@ -93,13 +93,6 @@ std::shared_ptr<triangle> surface::make_tiangle(int p0, int p2, int p3)
     /// к треугольнику добавляем ребра
     t->edges.insert({r02,r03,r23});
     t->center=(pts[p0]+pts[p2]+pts[p3])/3.;
-//    surface_pts.push_back((pts[p0]+pts[p2]+pts[p3])/3.);
-//    printf("surface_pts size %d\n",surface_pts.size());
-//    surface_pts.push_back(pts[p0]);
-//    surface_pts.push_back(pts[p2]);
-//    surface_pts.push_back(pts[p3]);
-//    printf("t center %lf %lf %lf\n",t->center.x,t->center.y,t->center.z);
-//    all_triangles.insert({t->id,t});
 
 
     /// дибавляем к точкам треугольник

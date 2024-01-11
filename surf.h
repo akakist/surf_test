@@ -192,7 +192,6 @@ struct surface
     /// все закрашенные треугольники, которые мы выводим в obj mesh
     std::set<std::set<int> > triangles;
 
-//    std::map<int,std::shared_ptr<triangle>> all_triangles;
     double picture_size;
 
     /// не связанные (свободные точки)
@@ -205,7 +204,6 @@ struct surface
     /// при нахождении в unlinked_points ищем ближайшее в linked_points, если точка может соединяться, то ок,
     /// если не может, то выбрасываем найденную в unlinked_points точку
     std::set<int> linked_points;
-//    std::deque<Point> surface_pts;
 
     /// средняя дистанция между точками
     double avg_dist;
